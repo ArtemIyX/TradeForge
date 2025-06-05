@@ -235,9 +235,11 @@ namespace RoboforexAPI.Services
             return SendRequest("logout", requestType: HttpRequestType.Post, cancellationToken: cancellationToken);
         }
 
-        public Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
+        public async Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
+                requestType: HttpRequestType.Delete,
+               cancellationToken: cancellationToken);
         }
 
         public Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
@@ -250,18 +252,15 @@ namespace RoboforexAPI.Services
             throw new NotImplementedException();
         }
 
-        public Task ModifyOrder(ModifyOrderRequest request, CancellationToken cancellationToken = default)
+        public async Task ModifyOrder(ModifyOrderRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
+               body: request.Body.ToFormData(), requestType: HttpRequestType.Put,
+               cancellationToken: cancellationToken);
         }
 
         public async Task<OrderId> PlaceOrder(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
-            var options = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
-
             BaseResponse response = await SendRequest($"accounts/{request.AccountId.Trim()}/orders",
                 body: request.Body.ToFormData(), requestType: HttpRequestType.Post,
                 cancellationToken: cancellationToken);

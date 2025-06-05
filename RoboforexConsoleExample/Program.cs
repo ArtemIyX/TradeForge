@@ -80,9 +80,9 @@ catch(Exception ex)
     Console.WriteLine(ex.Message);
 }
 
-/*try
+try
 {
-    await brokerApi.PlaceOrder(new RoboforexAPI.Models.Requests.Trading.PlaceOrderRequest()
+    var orderPlaced = await brokerApi.PlaceOrder(new RoboforexAPI.Models.Requests.Trading.PlaceOrderRequest()
     {
         AccountId = accountId,
         Body = new RoboforexAPI.Models.Requests.Trading.PlaceOrderRequestData()
@@ -95,11 +95,43 @@ catch(Exception ex)
             StopLoss = 437.00
         }
     });
+
+    Console.WriteLine($"Order placed: {JsonSerializer.Serialize(orderPlaced)}");
+
+    await Task.Delay(TimeSpan.FromSeconds(5));
+
+    await brokerApi.ModifyOrder(new RoboforexAPI.Models.Requests.Trading.ModifyOrderRequest()
+    {
+        AccountId = accountId,
+        Id = orderPlaced.Id,
+        Body = new RoboforexAPI.Models.Requests.Trading.ModifyOrderRequestData()
+        {
+            StopLoss = 435.00
+        }
+    });
+
+    var ordersUpdate = await brokerApi.GetOrders(new BaseAccountRequest()
+    {
+        AccountId = accountId
+    });
+
+    
+    Console.WriteLine($"Order modified: {JsonSerializer.Serialize(ordersUpdate)}");
+
+    await Task.Delay(TimeSpan.FromSeconds(5));
+    await brokerApi.CancelOrder(new RoboforexAPI.Models.Requests.Trading.CancelOrderRequest()
+    {
+        AccountId = accountId,
+        Id = orderPlaced.Id
+    });
+
+
+    Console.WriteLine($"Order canceled");
 }
 catch (Exception ex)
 {
     Console.WriteLine(ex.Message);
-}*/
+}
 
 // Run the host
 await host.RunAsync();
