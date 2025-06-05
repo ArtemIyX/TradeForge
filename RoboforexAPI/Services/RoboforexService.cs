@@ -15,6 +15,11 @@ using System.Text.Json.Serialization;
 
 namespace RoboforexAPI.Services
 {
+    /// <summary>
+    /// https://api-doc.stockstrader.com/
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="logger"></param>
     public class RoboforexService(
         HttpClient httpClient,
         ILogger<RoboforexService> logger) : IBrokerAPI
@@ -35,14 +40,6 @@ namespace RoboforexAPI.Services
                 request.Headers.Add("Authorization", "Bearer " + ApiToken);
             }
         }
-
-        /*protected void AddContent(HttpRequestMessage request, object? obj)
-        {
-            if (obj != null)
-            {
-                request.Content = new FormUrlEncodedContent(obj.ToFormData());
-            }
-        }*/
 
         protected async Task<BaseResponse> FetchResponse(HttpResponseMessage response,
             CancellationToken cancellationToken = default)
@@ -242,14 +239,18 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
-        public Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
+        public async Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
+                requestType: HttpRequestType.Delete,
+               cancellationToken: cancellationToken);
         }
 
-        public Task ModifyDeal(ModifyDealRequest request, CancellationToken cancellationToken = default)
+        public async Task ModifyDeal(ModifyDealRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
+               body: request.Body.ToFormData(), requestType: HttpRequestType.Put,
+               cancellationToken: cancellationToken);
         }
 
         public async Task ModifyOrder(ModifyOrderRequest request, CancellationToken cancellationToken = default)
