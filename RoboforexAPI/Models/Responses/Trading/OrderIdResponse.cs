@@ -5,6 +5,9 @@ namespace RoboforexAPI.Models.Responses.Trading
 {
     public class OrderIdResponse : BaseResponse
     {
+        public OrderIdResponse() { }
+        public OrderIdResponse(BaseResponse copy) : base(copy) { }
+
         public Entities.OrderId Order
         {
             get

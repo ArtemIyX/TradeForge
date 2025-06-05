@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace RoboforexAPI.Models.Responses.Accounts
 {
-    public class AccountOrdersResponse : BaseResponse
+    public class OrdersResponse : BaseResponse
     {
-        public AccountOrdersResponse() { }
+        public OrdersResponse() { }
 
-        public AccountOrdersResponse(BaseResponse copy) : base(copy) { }
+        public OrdersResponse(BaseResponse copy) : base(copy) { }
 
         public Entities.Order[] Orders
         {

@@ -1,12 +1,17 @@
 ﻿using Microsoft.Extensions.Logging;
+using RoboforexAPI.Extensions;
 using RoboforexAPI.Models.Entities;
 using RoboforexAPI.Models.Interfaces;
 using RoboforexAPI.Models.Requests;
+using RoboforexAPI.Models.Requests.Accounts;
 using RoboforexAPI.Models.Requests.Trading;
 using RoboforexAPI.Models.Responses;
+using RoboforexAPI.Models.Responses.Accounts;
 using RoboforexAPI.Models.Responses.Instruments;
+using RoboforexAPI.Models.Responses.Trading;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RoboforexAPI.Services
 {
@@ -27,17 +32,17 @@ namespace RoboforexAPI.Services
         {
             if (!string.IsNullOrEmpty(ApiToken))
             {
-                request.Headers.Add("Authorization", ApiToken);
+                request.Headers.Add("Authorization", "Bearer " + ApiToken);
             }
         }
 
-        protected void AddContent(HttpRequestMessage request, string? content)
+        /*protected void AddContent(HttpRequestMessage request, object? obj)
         {
-            if (!string.IsNullOrEmpty(content))
+            if (obj != null)
             {
-                request.Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
+                request.Content = new FormUrlEncodedContent(obj.ToFormData());
             }
-        }
+        }*/
 
         protected async Task<BaseResponse> FetchResponse(HttpResponseMessage response,
             CancellationToken cancellationToken = default)
@@ -46,6 +51,12 @@ namespace RoboforexAPI.Services
             {
                 throw new HttpRequestException("Unauthorized: Invalid or missing authentication credentials.",
                     null, System.Net.HttpStatusCode.Unauthorized);
+            }
+
+            if(response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                throw new HttpRequestException($"Bad request: {await response.Content.ReadAsStringAsync()}",
+                   null, System.Net.HttpStatusCode.BadRequest);
             }
 
             // Read and deserialize the response content
@@ -104,7 +115,7 @@ namespace RoboforexAPI.Services
         }
 
         protected async Task<BaseResponse> SendRequest(string query, 
-            string? body = null, 
+            Dictionary<string, string>? body = null, 
             HttpRequestType requestType = HttpRequestType.Post,
             CancellationToken cancellationToken = default)
         {
@@ -132,10 +143,14 @@ namespace RoboforexAPI.Services
                     default:
                         throw new ArgumentException("Unsupported request type.", nameof(requestType));
                 }
+
                 string url = _api + query;
                 HttpRequestMessage requestMessage = new HttpRequestMessage(method, url);
                 AddAuth(requestMessage);
-                AddContent(requestMessage, body);
+                if (body != null)
+                {
+                    requestMessage.Content = new FormUrlEncodedContent(body);
+                }
 
                 // Initialize response
                 HttpResponseMessage? response = await _httpClient.SendAsync(requestMessage, cancellationToken);
@@ -164,34 +179,41 @@ namespace RoboforexAPI.Services
         #endregion
 
         #region IBrokerAPI
-        public Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
+       
+
+        public async Task<Account[]> GetAccounts(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest("accounts", cancellationToken);
+            AccountsResponse accountsResponse = new AccountsResponse(response);
+            return accountsResponse.Accounts;
         }
 
-        public Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
+        public async Task<AccountState> GetAccountState(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}", cancellationToken);
+            AccountStateResponse stateResponse = new AccountStateResponse(response);
+            return stateResponse.AccountStateData;
         }
 
-        public Task<Account[]> GetAccounts(CancellationToken cancellationToken = default)
+        public async Task<Deal[]> GetDeals(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/deals", cancellationToken);
+            DealsResponse dealResponse = new DealsResponse(response);
+            return dealResponse.Deals;
         }
 
-        public Task<AccountState> GetAccountState(BaseAccountRequest request, CancellationToken cancellationToken = default)
+        public async Task<Order[]> GetOrders(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/orders", cancellationToken);
+            OrdersResponse ordersResponse = new OrdersResponse(response);
+            return ordersResponse.Orders;
         }
 
-        public Task<Deal[]> GetDeals(BaseAccountRequest request, CancellationToken cancellationToken = default)
+        public async Task<Instrument> GetInstrumentDescription(AccountTickerRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task<Instrument> GetInstrumentDescription(AccountTickerRequest request, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/instruments/{request.Ticker.Trim()}", cancellationToken);
+            InstrumentDescriptionResponse descriptionResponse = new InstrumentDescriptionResponse(response);
+            return descriptionResponse.InstrumentData;
         }
 
         public async Task<InstrumentShort[]> GetInstruments(CancellationToken cancellationToken = default)
@@ -201,19 +223,26 @@ namespace RoboforexAPI.Services
             return instrumentsResponse.Instruments;
         }
 
-        public Task<Order[]> GetOrders(BaseAccountRequest request, CancellationToken cancellationToken = default)
+        public async Task<QuoteData> GetQuoteData(AccountTickerRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task<QuoteData> GetQuoteData(AccountTickerRequest request, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
+            BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/instruments/{request.Ticker.Trim()}/quote", cancellationToken);
+            QuoteDataResponse quoteResponse = new QuoteDataResponse(response);
+            return quoteResponse.Quote;
         }
 
         public Task Logout(CancellationToken cancellationToken = default)
         {
             return SendRequest("logout", requestType: HttpRequestType.Post, cancellationToken: cancellationToken);
+        }
+
+        public Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
 
         public Task ModifyDeal(ModifyDealRequest request, CancellationToken cancellationToken = default)
@@ -226,9 +255,19 @@ namespace RoboforexAPI.Services
             throw new NotImplementedException();
         }
 
-        public Task PlaceOrder(PlaceOrderRequest request, CancellationToken cancellationToken = default)
+        public async Task<OrderId> PlaceOrder(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var options = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            BaseResponse response = await SendRequest($"accounts/{request.AccountId.Trim()}/orders",
+                body: request.Body.ToFormData(), requestType: HttpRequestType.Post,
+                cancellationToken: cancellationToken);
+
+            OrderIdResponse orderIdResponse = new OrderIdResponse(response);
+            return orderIdResponse.Order;
         }
 
         #endregion

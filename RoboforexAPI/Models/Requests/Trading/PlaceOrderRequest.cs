@@ -15,6 +15,7 @@ namespace RoboforexAPI.Models.Requests.Trading
         [JsonPropertyName("side")]
         public string Side { get; set; } = string.Empty;
 
+
         [JsonPropertyName("type")]
         public string Type { get; set; } = string.Empty;
 

@@ -29,6 +29,7 @@ namespace RoboforexAPI.Models.Entities
         [JsonPropertyName("trade_mode")]
         public string TradeModeStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public TradeMode TradeMode => TradeModeStr.ToTradeMode();
     }
 

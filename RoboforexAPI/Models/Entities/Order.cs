@@ -25,11 +25,13 @@ namespace RoboforexAPI.Models.Entities
         [JsonPropertyName("side")]
         public string SideStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public OrderSide SideEnum => SideStr.ToOrderSide();
 
         [JsonPropertyName("type")]
         public string TypeStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public OrderType TypeEnum => TypeStr.ToOrderType();
 
         [JsonPropertyName("filled_price")]
@@ -62,8 +64,10 @@ namespace RoboforexAPI.Models.Entities
             }
         }
 
+        [JsonPropertyName("status")]
         public string StatusStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public OrderStatus StatusEnum => StatusStr.ToOrderStatus();
     }
 }

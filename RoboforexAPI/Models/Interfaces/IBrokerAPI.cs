@@ -36,7 +36,7 @@ namespace RoboforexAPI.Models.Interfaces
         public Task<Deal[]> GetDeals(BaseAccountRequest request,
           CancellationToken cancellationToken = default);
 
-        public Task PlaceOrder(PlaceOrderRequest request,
+        public Task<OrderId> PlaceOrder(PlaceOrderRequest request,
             CancellationToken cancellationToken = default);
 
         public Task ModifyOrder(ModifyOrderRequest request,

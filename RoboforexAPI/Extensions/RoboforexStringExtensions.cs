@@ -48,9 +48,21 @@ namespace RoboforexAPI.Extensions
              "limit" => OrderType.Limit,
              "stop_out" => OrderType.StopOut,
              "stop_loss" => OrderType.StopLoss,
-             "take_profit " => OrderType.TakeProfit,
+             "take_profit" => OrderType.TakeProfit,
              _ => OrderType.Market
          };
+
+        public static string ToCustomString(this OrderType orderType) =>
+            orderType switch
+            {
+                OrderType.Market => "market",
+                OrderType.Stop => "stop",
+                OrderType.Limit => "limit",
+                OrderType.StopOut => "stop_out",
+                OrderType.StopLoss => "stop_loss",
+                OrderType.TakeProfit => "take_profit",
+                _ => "",
+            };
 
         public static OrderSide ToOrderSide(this string str)
             => str.ToLower() switch
@@ -58,6 +70,14 @@ namespace RoboforexAPI.Extensions
                 "buy" => OrderSide.Buy,
                 "sell" => OrderSide.Sell,
                 _ => OrderSide.Buy
+            };
+
+        public static string ToCustomString(this OrderSide side) =>
+            side switch
+            {
+                OrderSide.Buy => "buy",
+                OrderSide.Sell => "sell",
+                _ => ""
             };
 
         public static OrderStatus ToOrderStatus(this string str)
@@ -80,5 +100,7 @@ namespace RoboforexAPI.Extensions
                "trade" => DealStatus.Trade,
                _ => DealStatus.Trade
            };
+
+
     }
 }

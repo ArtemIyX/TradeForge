@@ -20,6 +20,7 @@ namespace RoboforexAPI.Models.Entities
         [JsonPropertyName("type")]
         public string TypeStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public AccountType TypeEnum => TypeStr.ToAccountType();
 
         [JsonPropertyName("currency")]
@@ -28,6 +29,7 @@ namespace RoboforexAPI.Models.Entities
         [JsonPropertyName("status")]
         public string StatusStr { get; set; } = string.Empty;
 
+        [JsonIgnore]
         public AccountStatus StatusEnum => StatusStr.ToAccountStatus();
     }
 }
