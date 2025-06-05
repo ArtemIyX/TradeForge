@@ -25,7 +25,7 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 
 var brokerApi = host.Services.GetRequiredService<IBrokerAPI>();
-brokerApi.ApiToken = "cefe35a75367d96423db5530d7d9e51dd9737ce95343cca517645be967ab440d";
+brokerApi.ApiToken = "";
 
 string accountId = "";
 try

@@ -249,13 +249,7 @@ namespace RoboforexAPI.Services
             return descriptionResponse.InstrumentData;
         }
 
-        /// <summary>
-        /// Get a list of all trading instruments available in StocksTrader in general 
-        /// (excluding the rules and restrictions for a specific trading account).
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <see cref="InstrumentShort"/>
-        /// <returns>Array of short descriptions</returns>
+        /// <inheritdoc/>
         public async Task<InstrumentShort[]> GetInstruments(CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest("instruments", cancellationToken);
@@ -263,12 +257,7 @@ namespace RoboforexAPI.Services
             return instrumentsResponse.Instruments;
         }
 
-        /// <summary>
-        /// Get the latest ask/bid/last quotes for an instrument.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <inheritdoc/>
         public async Task<QuoteData> GetQuoteData(AccountTickerRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/instruments/{request.Ticker.Trim()}/quote", cancellationToken);
@@ -276,22 +265,13 @@ namespace RoboforexAPI.Services
             return quoteResponse.Quote;
         }
 
-        /// <summary>
-        /// Terminate the user session (or perform the logout flow).
-        /// </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        //// <inheritdoc/>
         public Task Logout(CancellationToken cancellationToken = default)
         {
             return SendRequest("logout", requestType: HttpRequestType.Post, cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Delete unfulfilled Limit or Stop order.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        //// <inheritdoc/>
         public async Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
@@ -299,12 +279,7 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Close an open deal.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <inheritdoc/>
         public async Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
@@ -312,12 +287,7 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Set Stop Loss/Take Profit order for an open deal or edit them.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <inheritdoc/>
         public async Task ModifyDeal(ModifyDealRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
@@ -325,12 +295,7 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Modify Limit or Stop order parameters.
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <inheritdoc/>
         public async Task ModifyOrder(ModifyOrderRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
@@ -338,12 +303,7 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Place a new order (Market, Limit, Stop).
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <inheritdoc/>
         public async Task<OrderId> PlaceOrder(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await SendRequest($"accounts/{request.AccountId.Trim()}/orders",
