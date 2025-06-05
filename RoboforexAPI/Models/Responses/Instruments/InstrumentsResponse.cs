@@ -10,15 +10,15 @@ namespace RoboforexAPI.Models.Responses.Instruments
 {
     public class InstrumentsResponse : BaseResponse
     {
-        public InsrumentShort[] Instruments
+        public InstrumentShort[] Instruments
         {
             get
             {
                 if (Data is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
                 {
-                    return JsonSerializer.Deserialize<InsrumentShort[]>(jsonElement.GetRawText()) ?? Array.Empty<InsrumentShort>();
+                    return JsonSerializer.Deserialize<InstrumentShort[]>(jsonElement.GetRawText()) ?? [];
                 }
-                return Array.Empty<InsrumentShort>();
+                return [];
             }
         }
     }

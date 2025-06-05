@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RoboforexAPI.Models.Entities
 {
-    public class InsrumentShort
+    public class InstrumentShort
     {
         [JsonPropertyName("ticker")]
         public string Ticker { get; set; } = string.Empty;

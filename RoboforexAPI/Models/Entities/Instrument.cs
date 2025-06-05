@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RoboforexAPI.Models.Entities
 {
-    public class Insrument
+    public class Instrument
     {
         [JsonPropertyName("min_volume")]
         public double MinVolume { get; set; } = 0.0;
