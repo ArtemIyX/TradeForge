@@ -12,7 +12,7 @@ namespace RoboforexAPI.Extensions
                 "sell_only" => TradeMode.SellOnly,
                 "close_only" => TradeMode.CloseOnly,
                 "disabled" => TradeMode.Disabled,
-                _ => TradeMode.Disabled // Fallback for invalid values
+                _ => TradeMode.Disabled
             };
 
         public static AccountType ToAccountType(this string str)

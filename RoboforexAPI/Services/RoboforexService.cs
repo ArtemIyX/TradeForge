@@ -16,10 +16,14 @@ using System.Text.Json.Serialization;
 namespace RoboforexAPI.Services
 {
     /// <summary>
+    /// RoboforexService provides an implementation of the <see cref="IBrokerAPI"/> interface 
+    /// to interact with the StocksTrader broker API.
+    /// 
+    /// This service uses `HttpClient` to send authenticated requests and handle responses 
+    /// from the API endpoints listed at:
     /// https://api-doc.stockstrader.com/
+    /// 
     /// </summary>
-    /// <param name="httpClient"></param>
-    /// <param name="logger"></param>
     public class RoboforexService(
         HttpClient httpClient,
         ILogger<RoboforexService> logger) : IBrokerAPI
@@ -33,6 +37,10 @@ namespace RoboforexAPI.Services
 
         #region Http
 
+        /// <summary>
+        /// Adds the Authorization header to the request using the bearer token.
+        /// </summary>
+        /// <param name="request">The HTTP request message.</param>
         protected void AddAuth(HttpRequestMessage request)
         {
             if (!string.IsNullOrEmpty(ApiToken))
@@ -41,6 +49,13 @@ namespace RoboforexAPI.Services
             }
         }
 
+        /// <summary>
+        /// Parses and validates the HTTP response from the API.
+        /// Throws exceptions for HTTP and application-level errors.
+        /// </summary>
+        /// <param name="response">The HTTP response message.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A deserialized <see cref="BaseResponse"/> object.</returns>
         protected async Task<BaseResponse> FetchResponse(HttpResponseMessage response,
             CancellationToken cancellationToken = default)
         {
@@ -74,6 +89,12 @@ namespace RoboforexAPI.Services
             return parsedResponse;
         }
 
+        /// <summary>
+        /// Executes an HTTP GET request to the API.
+        /// </summary>
+        /// <param name="query">The endpoint path (relative to the base URL).</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Parsed <see cref="BaseResponse"/> object.</returns>
         protected async Task<BaseResponse> GetRequest(string query,
              CancellationToken cancellationToken = default)
         {
@@ -104,6 +125,9 @@ namespace RoboforexAPI.Services
             }
         }
 
+        /// <summary>
+        /// Type of HTTP request supported in <see cref="SendRequest"/>.
+        /// </summary>
         public enum HttpRequestType
         {
             Post,
@@ -111,6 +135,14 @@ namespace RoboforexAPI.Services
             Delete
         }
 
+        /// <summary>
+        /// Executes an HTTP POST, PUT, or DELETE request with optional body.
+        /// </summary>
+        /// <param name="query">The endpoint path.</param>
+        /// <param name="body">Form data to include in request.</param>
+        /// <param name="requestType">HTTP method.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Parsed <see cref="BaseResponse"/> object.</returns>
         protected async Task<BaseResponse> SendRequest(string query, 
             Dictionary<string, string>? body = null, 
             HttpRequestType requestType = HttpRequestType.Post,
@@ -176,8 +208,8 @@ namespace RoboforexAPI.Services
         #endregion
 
         #region IBrokerAPI
-       
 
+        /// <inheritdoc/>
         public async Task<Account[]> GetAccounts(CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest("accounts", cancellationToken);
@@ -185,6 +217,7 @@ namespace RoboforexAPI.Services
             return accountsResponse.Accounts;
         }
 
+        /// <inheritdoc/>
         public async Task<AccountState> GetAccountState(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}", cancellationToken);
@@ -192,6 +225,7 @@ namespace RoboforexAPI.Services
             return stateResponse.AccountStateData;
         }
 
+        /// <inheritdoc/>
         public async Task<Deal[]> GetDeals(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/deals", cancellationToken);
@@ -199,6 +233,7 @@ namespace RoboforexAPI.Services
             return dealResponse.Deals;
         }
 
+        /// <inheritdoc/>
         public async Task<Order[]> GetOrders(BaseAccountRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/orders", cancellationToken);
@@ -206,6 +241,7 @@ namespace RoboforexAPI.Services
             return ordersResponse.Orders;
         }
 
+        /// <inheritdoc/>
         public async Task<Instrument> GetInstrumentDescription(AccountTickerRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/instruments/{request.Ticker.Trim()}", cancellationToken);
@@ -213,6 +249,13 @@ namespace RoboforexAPI.Services
             return descriptionResponse.InstrumentData;
         }
 
+        /// <summary>
+        /// Get a list of all trading instruments available in StocksTrader in general 
+        /// (excluding the rules and restrictions for a specific trading account).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <see cref="InstrumentShort"/>
+        /// <returns>Array of short descriptions</returns>
         public async Task<InstrumentShort[]> GetInstruments(CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest("instruments", cancellationToken);
@@ -220,6 +263,12 @@ namespace RoboforexAPI.Services
             return instrumentsResponse.Instruments;
         }
 
+        /// <summary>
+        /// Get the latest ask/bid/last quotes for an instrument.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<QuoteData> GetQuoteData(AccountTickerRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await GetRequest($"accounts/{request.AccountId.Trim()}/instruments/{request.Ticker.Trim()}/quote", cancellationToken);
@@ -227,11 +276,22 @@ namespace RoboforexAPI.Services
             return quoteResponse.Quote;
         }
 
+        /// <summary>
+        /// Terminate the user session (or perform the logout flow).
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task Logout(CancellationToken cancellationToken = default)
         {
             return SendRequest("logout", requestType: HttpRequestType.Post, cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Delete unfulfilled Limit or Stop order.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task CancelOrder(CancelOrderRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
@@ -239,6 +299,12 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Close an open deal.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task CloseDeal(CloseDealRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
@@ -246,6 +312,12 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Set Stop Loss/Take Profit order for an open deal or edit them.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task ModifyDeal(ModifyDealRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/deals/{request.Id.Trim()}",
@@ -253,6 +325,12 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Modify Limit or Stop order parameters.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task ModifyOrder(ModifyOrderRequest request, CancellationToken cancellationToken = default)
         {
             await SendRequest($"accounts/{request.AccountId.Trim()}/orders/{request.Id.Trim()}",
@@ -260,6 +338,12 @@ namespace RoboforexAPI.Services
                cancellationToken: cancellationToken);
         }
 
+        /// <summary>
+        /// Place a new order (Market, Limit, Stop).
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<OrderId> PlaceOrder(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
             BaseResponse response = await SendRequest($"accounts/{request.AccountId.Trim()}/orders",
