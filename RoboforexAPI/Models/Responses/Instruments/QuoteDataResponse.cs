@@ -11,6 +11,10 @@ namespace RoboforexAPI.Models.Responses.Instruments
 {
     public class QuoteDataResponse : BaseResponse
     {
+        public QuoteDataResponse() { }
+
+        public QuoteDataResponse(BaseResponse copy) : base(copy) { }
+
         public QuoteData Quote
         {
             get

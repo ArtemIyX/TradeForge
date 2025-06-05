@@ -9,6 +9,18 @@ namespace RoboforexAPI.Models.Responses
 {
     public class BaseResponse
     {
+        public BaseResponse()
+        {
+
+        }
+
+        public BaseResponse(BaseResponse copy)
+        {
+            this.Code = copy.Code;
+            this.Data = copy.Data;
+            this.ErrorMsg = copy.ErrorMsg;
+        }
+
         [JsonPropertyName("code")]
         public string Code { get; set; } = string.Empty;
 

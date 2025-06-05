@@ -10,15 +10,19 @@ namespace RoboforexAPI.Models.Responses.Accounts
 {
     public class AccountsResponse : BaseResponse
     {
+        public AccountsResponse() { }
+
+        public AccountsResponse(BaseResponse copy) : base(copy) { }
+
         public Entities.Account[] Accounts
         {
             get
             {
                 if (Data is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
                 {
-                    return JsonSerializer.Deserialize<Entities.Account[]>(jsonElement.GetRawText()) ?? Array.Empty<Entities.Account>();
+                    return JsonSerializer.Deserialize<Entities.Account[]>(jsonElement.GetRawText()) ?? [];
                 }
-                return Array.Empty<Entities.Account>();
+                return [];
             }
         }
     }

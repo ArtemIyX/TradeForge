@@ -1,15 +1,14 @@
 ﻿using RoboforexAPI.Models.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace RoboforexAPI.Models.Responses.Instruments
 {
     public class InstrumentsResponse : BaseResponse
     {
+        public InstrumentsResponse() { }
+
+        public InstrumentsResponse(BaseResponse copy) : base(copy) { }
+
         public InstrumentShort[] Instruments
         {
             get

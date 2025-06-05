@@ -1,31 +1,42 @@
-﻿using RoboforexAPI.Models.Responses.Instruments;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using RoboforexAPI.Models.Interfaces;
+using RoboforexAPI.Services;
 using System.Text.Json;
 
-namespace RoboforexConsoleExample
-{
-    internal class Program
+
+// Create the host builder
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
     {
-        static void Main(string[] args)
+        // Register a named HttpClient
+        services.AddHttpClient("RoboforexHttpClient", client =>
         {
-            string jsonString = @"{
-              ""code"": ""ok"",
-              ""data"": [
-                {
-                  ""ticker"": ""EURUSD"",
-                  ""description"": ""EUR/USD"",
-                  ""contract_size"": 1,
-                  ""units"": ""Share(s)""
-                }
-              ]
-            }";
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+        });
 
-            InstrumentsResponse response = JsonSerializer.Deserialize<InstrumentsResponse>(jsonString)!;
+        // Register the service
+        services.AddScoped<IBrokerAPI, RoboforexService>();
+    })
+    .Build();
 
-            // Access the array of InsrumentShort via the Instruments property
-            foreach (var instrument in response.Instruments)
-            {
-                Console.WriteLine($"Ticker: {instrument.Ticker}, Description: {instrument.Description}, ContractSize: {instrument.ContractSize}, Units: {instrument.Units}");
-            }
-        }
+var brokerApi = host.Services.GetRequiredService<IBrokerAPI>();
+brokerApi.ApiToken = "cefe35a75367d96423db5530d7d9e51dd9737ce95343cca517645be967ab440d";
+
+try
+{
+    Console.WriteLine("get instruments");
+    RoboforexAPI.Models.Entities.InstrumentShort[] arr = await brokerApi.GetInstruments();
+    foreach (var item in arr)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(item));
     }
+    Console.WriteLine("Finished");
 }
+catch(Exception ex)
+{
+    Console.WriteLine(ex.Message);
+}
+
+// Run the host
+await host.RunAsync();

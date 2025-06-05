@@ -10,6 +10,10 @@ namespace RoboforexAPI.Models.Responses.Instruments
 {
     public class InstrumentDescriptionResponse : BaseResponse
     {
+        public InstrumentDescriptionResponse() { }
+
+        public InstrumentDescriptionResponse(BaseResponse copy) : base(copy) { }
+
         public Instrument InstrumentData
         {
             get

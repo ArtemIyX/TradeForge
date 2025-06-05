@@ -9,6 +9,10 @@ namespace RoboforexAPI.Models.Responses.Accounts
 {
     public class AccountOrdersResponse : BaseResponse
     {
+        public AccountOrdersResponse() { }
+
+        public AccountOrdersResponse(BaseResponse copy) : base(copy) { }
+
         public Entities.Order[] Orders
         {
             get

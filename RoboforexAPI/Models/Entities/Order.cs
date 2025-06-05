@@ -13,22 +13,6 @@ namespace RoboforexAPI.Models.Entities
 {
     public class Order
     {
-        /*
-         * "id": "002212096",
-          "ticker": "AAPL",
-          "volume": 13,
-          "side": "buy",
-          "type": "limit",
-          "filled_price": 137.82,
-          "price": 137.84,
-          "expiration": 1705888778,
-          "last_modified": 1704879978,
-          "comment": "string",
-          "deals": [
-            "001389"
-          ],
-          "status": "filled"
-        */
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 

@@ -10,6 +10,10 @@ namespace RoboforexAPI.Models.Responses.Accounts
 {
     public class AccountStateResponse : BaseResponse
     {
+        public AccountStateResponse() { }
+
+        public AccountStateResponse(BaseResponse copy) : base(copy) { }
+
         public AccountState AccountStateData
         {
             get

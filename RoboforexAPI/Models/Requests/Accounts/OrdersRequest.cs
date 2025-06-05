@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RoboforexAPI.Models.Requests
+namespace RoboforexAPI.Models.Requests.Accounts
 {
     public class OrdersRequest : BaseAccountRequest
     {

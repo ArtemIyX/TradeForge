@@ -1,4 +1,5 @@
-﻿using RoboforexAPI.Models.Enums;
+﻿using RoboforexAPI.Extensions;
+using RoboforexAPI.Models.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
