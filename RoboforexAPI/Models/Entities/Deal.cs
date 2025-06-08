@@ -28,13 +28,13 @@ namespace RoboforexAPI.Models.Entities
         public double OpenPrice { get; set; } = 0.0;
 
         [JsonPropertyName("open_time")]
-        public ulong OpenTime { get; set; } = 0;
+        public long OpenTime { get; set; } = 0;
 
         [JsonPropertyName("close_price")]
         public double? ClosePrice { get; set; } = null;
 
         [JsonPropertyName("close_time")]
-        public ulong? CloseTime { get; set; } = null;
+        public long? CloseTime { get; set; } = null;
 
         [JsonPropertyName("status")]
         public string StatusStr { get;set; } = string.Empty;

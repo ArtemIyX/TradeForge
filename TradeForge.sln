@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoboforexAPI", "RoboforexAP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RoboforexConsoleExample", "RoboforexConsoleExample\RoboforexConsoleExample.csproj", "{C552737D-8FA2-4365-9952-D41671501893}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrategyAnalyzer", "StrategyAnalyzer\StrategyAnalyzer.csproj", "{3920E850-7D76-40AC-AFF5-407677023B38}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrategyAnalyzerConsoleExample", "StrategyAnalyzerConsoleExample\StrategyAnalyzerConsoleExample.csproj", "{9ECF8F9E-6D1F-47F9-B8B0-F4AA6C027020}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +25,14 @@ Global
 		{C552737D-8FA2-4365-9952-D41671501893}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C552737D-8FA2-4365-9952-D41671501893}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C552737D-8FA2-4365-9952-D41671501893}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3920E850-7D76-40AC-AFF5-407677023B38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3920E850-7D76-40AC-AFF5-407677023B38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3920E850-7D76-40AC-AFF5-407677023B38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3920E850-7D76-40AC-AFF5-407677023B38}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9ECF8F9E-6D1F-47F9-B8B0-F4AA6C027020}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9ECF8F9E-6D1F-47F9-B8B0-F4AA6C027020}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9ECF8F9E-6D1F-47F9-B8B0-F4AA6C027020}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9ECF8F9E-6D1F-47F9-B8B0-F4AA6C027020}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

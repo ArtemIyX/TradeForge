@@ -56,19 +56,20 @@ try
     var firstInstrument = instruments.First();
     Console.WriteLine("First instrument: " + JsonSerializer.Serialize(firstInstrument));
 
+    string ticker = "NAS100";
     var instrumentData = await brokerApi.GetInstrumentDescription(new RoboforexAPI.Models.Requests.AccountTickerRequest()
     {
         AccountId = firstAccount.Id,
-        Ticker = "TSLA"
+        Ticker = ticker
     });
-    Console.WriteLine("TSLA data: " + JsonSerializer.Serialize(instrumentData));
+    Console.WriteLine($"{ticker} data: " + JsonSerializer.Serialize(instrumentData));
 
     var quoteData = await brokerApi.GetQuoteData(new RoboforexAPI.Models.Requests.AccountTickerRequest()
     {
         AccountId = firstAccount.Id,
-        Ticker = "TSLA"
+        Ticker = ticker
     });
-    Console.WriteLine("TSLA quote: " + JsonSerializer.Serialize(quoteData));
+    Console.WriteLine($"{ticker} quote: " + JsonSerializer.Serialize(quoteData));
 
     var orders = await brokerApi.GetOrders(new BaseAccountRequest()
     {
@@ -86,7 +87,7 @@ catch(Exception ex)
     Console.WriteLine(ex.Message);
 }
 
-try
+/*try
 {
     var orderPlaced = await brokerApi.PlaceOrder(new RoboforexAPI.Models.Requests.Trading.PlaceOrderRequest()
     {
@@ -137,7 +138,7 @@ try
 catch (Exception ex)
 {
     Console.WriteLine(ex.Message);
-}
+}*/
 
 // Run the host
 await host.RunAsync();

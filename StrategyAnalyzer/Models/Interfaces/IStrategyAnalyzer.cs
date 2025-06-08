@@ -7,13 +7,16 @@ using System.Threading.Tasks;
 
 namespace StrategyAnalyzer.Models.Interfaces
 {
-    public interface IStrategyAnalyzer<T>
+    public interface IStrategyAnalyzer<Deal, Config>
     {
-        public Task ImportListOfTrades(ICollection<T> history);
-        public ICollection<T> GetListOfTrades();
-        public Task<MainStrategyStats> Main();
-        public Task<MinorStrategyStats> Minor();
-        public Task<TradeStats> Trade();
-        public Task<MonthlyStrategyPerformance> MonthlyPerformance();
+        public Config StrategyConfig { get; set; }
+        public void ImportListOfTrades(ICollection<Deal> history);
+        public ICollection<Deal> GetListOfTrades();
+
+        public Task<EquityData> Equity(CancellationToken cancellationToken = default);
+        public Task<MainStrategyStats> Main(CancellationToken cancellationToken = default);
+        public Task<MinorStrategyStats> Minor(CancellationToken cancellationToken = default);
+        public Task<TradeStats> Trade(CancellationToken cancellationToken = default);
+        public Task<MonthlyStrategyPerformance> MonthlyPerformance(CancellationToken cancellationToken = default);
     }
 }
