@@ -139,6 +139,9 @@ debug/
 ipch/
 release/
 tmp/
+.idea/
+cmake**/
+
 .cache/clangd/
 # ignore both a directory as well as a symlink
 /share/qtcreator/QtProject
@@ -286,3 +289,4 @@ tmp/
 /*-debug/
 /*-release/
 /out/
+

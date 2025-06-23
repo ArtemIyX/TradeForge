@@ -19,5 +19,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+
+    QDialog *historicalMenuWidget = nullptr;
 };
 #endif // MAINWINDOW_H
