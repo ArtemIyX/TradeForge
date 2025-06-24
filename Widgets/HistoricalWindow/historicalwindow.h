@@ -30,6 +30,8 @@ public slots:
 
     void createSymbolClicked();
     void treeViewItemClicked(const QModelIndex &index);
+    void showTreeViewContextMenu(const QPoint &pos);
+    void showTreeViewHeaderContext(const QPoint &pos);
 
 private:
     Ui::historicalWindow *ui;

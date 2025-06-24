@@ -11,6 +11,8 @@
 #include <QDir>
 #include "Components/customStyledItemDelegate.h"
 #include <QDirIterator>
+#include <qmenu.h>
+#include <QTreeWidget>
 
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
@@ -20,11 +22,21 @@ historicalWindow::historicalWindow(QWidget *parent) :
     connect(ui->symbolsTreeView, &QTreeView::clicked, this, &historicalWindow::treeViewItemClicked);
 
     model = new QStandardItemModel(this);
-    model->setHorizontalHeaderLabels({"RoboForex MT5"});
+    model->setHorizontalHeaderLabels({"Tree view"});
 
     ui->symbolsTreeView->setModel(model);
+    ui->symbolsTreeView->setEnabled(true);
 
     ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
+
+    ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->symbolsTreeView->header(), &QHeaderView::customContextMenuRequested,
+            this, &historicalWindow::showTreeViewHeaderContext);
+
+
+    ui->symbolsTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->symbolsTreeView, &QTreeView::customContextMenuRequested,
+            this, &historicalWindow::showTreeViewContextMenu);
 
     ui->itemSettingsTable->setColumnCount(2);
     ui->itemSettingsTable->setRowCount(10);
@@ -43,8 +55,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
     loadTreeViewItems();
-
-    ui->symbolsTreeView->expandAll();
 }
 
 historicalWindow::~historicalWindow() {
@@ -53,33 +63,51 @@ historicalWindow::~historicalWindow() {
 
 void historicalWindow::loadTreeViewItems() {
 
-    QDirIterator it{QDir(dataFolder)};
+    if (!QDir(dataFolder).exists()) {
+        QDir(dataFolder).mkdir(dataFolder);
+    }
 
-    qDebug() << it.filePath();
+    QHash<QString, QTreeWidgetItem*> pathItems;
+
+    QDirIterator it(dataFolder, QDir::AllEntries | QDir::NoDotAndDotDot,
+                       QDirIterator::Subdirectories);
 
     while (it.hasNext()) {
+        QString path = it.next();
+        QFileInfo info = it.fileInfo();
 
-        it.next();
+        QString relativePath = QDir(dataFolder).relativeFilePath(info.absoluteFilePath());
+        QStringList parts = relativePath.split("/", Qt::SkipEmptyParts);
 
-        QFile file{it.filePath()};
-        if (file.open(QIODevice::WriteOnly)) {
-            QDataStream out(&file);
+        QStandardItem* current = nullptr;
+        for (int i = 0; i < parts.size(); ++i) {
+            const QString& part = parts[i];
 
-            QString text;
-            out >> text;
+            QStandardItem* parentItem = current ? current : model->invisibleRootItem();
+            bool found = false;
 
-            QStandardItem *item = new QStandardItem(it.filePath().split('.').first().split('/').last());
+            for (int row = 0; row < parentItem->rowCount(); ++row) {
+                QStandardItem* child = parentItem->child(row);
+                if (child->text() == part) {
+                    current = child;
+                    found = true;
+                    break;
+                }
+            }
 
-            item->setData(it.filePath(), ItemDataPath);
-
-            model->appendRow(item);
+            if (!found) {
+                QStandardItem* newItem = new QStandardItem(part);
+                newItem->setData(path, ItemDataPath);
+                parentItem->appendRow(newItem);
+                current = newItem;
+            }
         }
-
     }
 }
 
 void historicalWindow::createSymbolClicked() {
 
+    return;
     QStandardItem *documentsItem = new QStandardItem("New symbol");
     model->appendRow({documentsItem});
 
@@ -90,14 +118,14 @@ void historicalWindow::createSymbolClicked() {
 
     auto func = [this, documentsItem](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
 
-        QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
+        const QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
 
         qDebug() << lineEdit->text();
 
-        QString symbolPath = dataFolder + "/" + lineEdit->text() + ".hd";
+        const QString symbolPath = dataFolder + "/" + lineEdit->text() + ".hd";
 
-        QFileInfo fileInfo(symbolPath);
-        QDir dir = fileInfo.absoluteDir();
+        const QFileInfo fileInfo(symbolPath);
+        const QDir dir = fileInfo.absoluteDir();
 
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -120,7 +148,8 @@ void historicalWindow::createSymbolClicked() {
 
 void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
-    QStandardItem *item = model->itemFromIndex(index);
+    return;
+    const QStandardItem *item = model->itemFromIndex(index);
     if (!item) {
         return;
     }
@@ -129,6 +158,112 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
     if (file.open(QIODevice::WriteOnly)) {
         QDataStream out(&file);
 
+
+    }
+}
+
+void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
+
+    const QModelIndex index = ui->symbolsTreeView->indexAt(pos);
+    if (!index.isValid()) {
+        qDebug() << "Clicked to empty space";
+        return;
+    }
+
+    QMenu contextMenu(this);
+
+    const QAction *addFolderAction = contextMenu.addAction("Add folder");
+    const QAction *deleteAction = contextMenu.addAction("Delete");
+
+    const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
+
+    if (selectedAction == addFolderAction) {
+
+        QStandardItem *folderItem = new QStandardItem("New folder");
+        QStandardItem *itemParent = model->itemFromIndex(ui->symbolsTreeView->indexAt(pos));
+        itemParent->appendRow({folderItem});
+        folderItem->setEditable(true);
+        folderItem->setData(itemParent->data(), ItemDataPath);
+
+        ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
+        ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
+
+        bool bTrue = false;
+
+        auto func = [this, folderItem, &bTrue](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+
+            if (bTrue == true) {
+                return;
+            }
+            bTrue = true;
+
+            const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+            const QString folderPath = folderItem->data(ItemDataPath).toString() + "/" + lineEdit->text();
+            const QDir dir(folderPath);
+
+
+            if (!dir.exists()) {
+
+                dir.mkpath(folderPath);
+                folderItem->setData(folderPath, ItemDataPath);
+
+            }else {
+
+                model->removeRow(0, model->indexFromItem(folderItem));
+            }
+        };
+
+        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
+
+    } else if (selectedAction == deleteAction) {
+
+        qDebug() << "Delete folder";
+    }
+}
+
+void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
+
+    QMenu contextMenu(this);
+
+    const QAction *addFolderAction = contextMenu.addAction("Add folder");
+
+    const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
+
+    if (selectedAction == addFolderAction) {
+
+        QStandardItem *folderItem = new QStandardItem("New folder");
+        //model->appendRow({documentsItem});
+
+        model->appendRow({folderItem});
+
+        folderItem->setEditable(true);
+
+        ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
+        ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
+
+        auto func = [this, folderItem](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+
+            const QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
+
+            const QString symbolPath = dataFolder + "/" + lineEdit->text();
+
+            const QDir dir(symbolPath);
+
+            if (!dir.exists()) {
+
+                qDebug() << dir.mkpath(symbolPath);
+
+                folderItem->setData(dataFolder + "/" + lineEdit->text(), ItemDataPath);
+
+                qDebug() << folderItem->data(ItemDataPath).toString();
+
+            }else {
+
+                model->removeRow(0, model->indexFromItem(folderItem));
+            }
+        };
+
+        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
 
     }
 }
