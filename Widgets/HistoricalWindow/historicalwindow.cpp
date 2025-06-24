@@ -24,6 +24,33 @@ historicalWindow::historicalWindow(QWidget *parent) :
     model = new QStandardItemModel(this);
     model->setHorizontalHeaderLabels({"Tree view"});
 
+    ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    ui->tabWidget->setStyleSheet(R"(
+
+            QTabWidget::pane {
+                border: none;
+                background: transparent;
+            }
+
+
+QTabBar {
+        background-color: #ffffff;
+}
+
+
+    QTabBar::tab {
+        background: #2e2e2e;
+        color: white;
+        padding: 6px 12px;
+        border: 1px solid #555;
+        min-width: 100px;
+    }
+
+    QTabBar::tab:selected {
+        background: #3c3c3c;
+        border-color: #888;
+    })");
+
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setEnabled(true);
 
@@ -69,7 +96,7 @@ void historicalWindow::loadTreeViewItems() {
 
     QHash<QString, QTreeWidgetItem*> pathItems;
 
-    QDirIterator it(dataFolder, QDir::AllEntries | QDir::NoDotAndDotDot,
+    QDirIterator it(dataFolder, QDir::Dirs | QDir::NoDotAndDotDot,
                        QDirIterator::Subdirectories);
 
     while (it.hasNext()) {
@@ -148,18 +175,32 @@ void historicalWindow::createSymbolClicked() {
 
 void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
-    return;
     const QStandardItem *item = model->itemFromIndex(index);
-    if (!item) {
+    if (item) {
         return;
     }
 
-    QFile file{item->data(ItemDataPath).toString()};
-    if (file.open(QIODevice::WriteOnly)) {
-        QDataStream out(&file);
+    ui->selectedFolderItemsWidget->layout()->takeAt(0);
 
+    QLayoutItem* widgetItem;
 
+    while (( widgetItem = ui->selectedFolderItemsWidget->layout()->takeAt(0)) != nullptr) {
+        if (widgetItem->widget()) {
+            delete widgetItem->widget();
+        }
+        delete widgetItem;
     }
+
+    QDirIterator it(item->data(ItemDataPath).toString(), QDir::Files);
+
+    while (it.hasNext()) {
+
+        const QString path = it.next();
+
+        ui->selectedFolderItemsWidget->layout()->addWidget(new QLabel(it.fileInfo().fileName()));
+    }
+
+    qobject_cast<QVBoxLayout*>(ui->selectedFolderItemsWidget->layout())->addStretch();
 }
 
 void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
@@ -171,6 +212,8 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
     }
 
     QMenu contextMenu(this);
+
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     const QAction *addFolderAction = contextMenu.addAction("Add folder");
     const QAction *deleteAction = contextMenu.addAction("Delete");
@@ -224,6 +267,8 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
 void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
 
     QMenu contextMenu(this);
+
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     const QAction *addFolderAction = contextMenu.addAction("Add folder");
 
