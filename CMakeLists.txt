@@ -43,18 +43,8 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         --no-translations
         --no-system-d3d-compiler
         --no-opengl-sw
+        --compiler-runtime
         $<TARGET_FILE:${PROJECT_NAME}>
-)
-
-set(DLL_FILES
-        "D:/Qt/Tools/mingw1310_64/bin/libgcc_s_seh-1.dll"
-        "D:/Qt/Tools/mingw1310_64/bin/libstdc++-6.dll"
-        "D:/Qt/Tools/mingw1310_64/bin/libwinpthread-1.dll"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES}
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
 )
 
 qt_generate_deploy_app_script(
