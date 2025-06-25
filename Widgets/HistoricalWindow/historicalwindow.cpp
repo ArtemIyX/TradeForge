@@ -68,6 +68,9 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->folderItemsTable->setItem(0, 0, new QTableWidgetItem("Symbol"));
     ui->folderItemsTable->setItem(0, 1, new QTableWidgetItem("Description"));
     ui->folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
+    ui->folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->folderItemsTable, &QTableWidget::customContextMenuRequested,
+        this, &historicalWindow::showFolderItemsContextMenu);
 
     connect(ui->folderItemsTable, &QTableWidget::currentCellChanged, this, &historicalWindow::folderItemSelected);
 
@@ -272,7 +275,19 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
 
     } else if (selectedAction == deleteAction) {
 
-        qDebug() << "Delete folder";
+        const QString itemPath = model->itemFromIndex(index)->data(ItemDataPath).toString();
+
+        QDir(itemPath).removeRecursively();
+
+        QStandardItem* itemToRemoveParent = model->itemFromIndex(index)->parent();
+
+        if (itemToRemoveParent) {
+
+            itemToRemoveParent->removeRow(model->itemFromIndex(index)->row());
+        }else {
+
+             model->removeRow(model->indexFromItem(model->itemFromIndex(index)).row());
+        }
     }
 }
 
@@ -383,4 +398,26 @@ void historicalWindow::settingValueChanged(int row, int column) {
     dataStream << itemSettings;
 
     file.close();
+}
+
+void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
+
+    QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
+    if (!item) return;
+
+    QMenu contextMenu(this);
+
+    QAction *deleteAction = contextMenu.addAction("Удалить");
+
+    QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
+
+    if (selectedAction == deleteAction) {
+
+        QString pathToData = item->data(ItemDataPath).toString();
+        QFile::remove(pathToData);
+
+        ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
+
+
+    }
 }

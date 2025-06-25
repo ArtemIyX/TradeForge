@@ -38,6 +38,7 @@ public slots:
     void showTreeViewHeaderContext(const QPoint &pos);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void settingValueChanged(int row, int column);
+    void showFolderItemsContextMenu(const QPoint &pos);
 
 private:
     Ui::historicalWindow *ui;
