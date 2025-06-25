@@ -8,7 +8,10 @@
 #include <QDialog>
 #include <QDir>
 
-enum CustomTreeItemData {
+class historicalWindowTable;
+class QTableWidgetItem;
+
+enum historicalWindowItemsData {
     ItemDataPath = Qt::UserRole + 1
 };
 
@@ -29,16 +32,25 @@ public:
 public slots:
 
     void createSymbolClicked();
+    void symbolNameAccepted(QTableWidgetItem* item);
     void treeViewItemClicked(const QModelIndex &index);
     void showTreeViewContextMenu(const QPoint &pos);
     void showTreeViewHeaderContext(const QPoint &pos);
+    void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
+    void settingValueChanged(int row, int column);
 
 private:
     Ui::historicalWindow *ui;
 
+    historicalWindowTable *itemSettingsTable;
+
     QString dataFolder = QDir::current().path() + "/data";
 
     QStandardItemModel *model;
+
+    QString currentFolder = "";
+
+    QString currentFolderItem = "";
 };
 
 

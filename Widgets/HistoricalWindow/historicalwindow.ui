@@ -209,7 +209,7 @@ border: 1px solid #555555;</string>
                 </spacer>
                </item>
                <item>
-                <widget class="QTableWidget" name="tableWidget">
+                <widget class="QTableWidget" name="folderItemsTable">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
@@ -218,25 +218,26 @@ border: 1px solid #555555;</string>
                  </property>
                  <property name="styleSheet">
                   <string notr="true">QTableWidget {
-        border: 1px solid #444;
-        gridline-color: #444;
+        border: 1px solid #666666;
+        gridline-color: #555555;
+		 color: #fff;
 }
 
 QHeaderView::section {
         background-color: #2e2e2e; 
         color: #CCCCCC;              
         padding: 4px;
-        border-top: 0px solid #444;
-        border-left: 0px solid #444;
-        border-right: 1px solid #444;
-		 border-bottom: 1px solid #444;
+        border-top: none;
+        border-left: none;
+        border-right: 1px solid #555555;
+		 border-bottom: 1px solid #555555;
 }</string>
                  </property>
                  <property name="rowCount">
                   <number>1</number>
                  </property>
                  <property name="columnCount">
-                  <number>3</number>
+                  <number>2</number>
                  </property>
                  <attribute name="horizontalHeaderStretchLastSection">
                   <bool>true</bool>
@@ -245,7 +246,6 @@ QHeaderView::section {
                   <bool>false</bool>
                  </attribute>
                  <row/>
-                 <column/>
                  <column/>
                  <column/>
                 </widget>
@@ -259,21 +259,6 @@ padding-left: 2px;</string>
                  </property>
                  <property name="text">
                   <string>USA-100</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QTableWidget" name="itemSettingsTable">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">border: 1px solid #555555;
-color: rgb(255, 255, 255);
-</string>
                  </property>
                 </widget>
                </item>

@@ -18,6 +18,11 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/HistoricalWindow/historicalwindow.ui
         Widgets/HistoricalWindow/Components/customStyledItemDelegate.cpp
         Widgets/HistoricalWindow/Components/customStyledItemDelegate.h
+        Widgets/HistoricalWindow/Components/tableSymbolsStyledDelegate.cpp
+        Widgets/HistoricalWindow/Components/tableSymbolsStyledDelegate.h
+        Widgets/HistoricalWindow/CustomTable/historicatlWindowTable.cpp
+        Widgets/HistoricalWindow/CustomTable/historicatlWindowTable.h
+        Widgets/HistoricalWindow/Data/SymbolStructs.cuh
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -13,10 +13,19 @@
 #include <QDirIterator>
 #include <qmenu.h>
 #include <QTreeWidget>
+#include "Components/tableSymbolsStyledDelegate.h"
+#include "CustomTable/historicatlWindowTable.h"
+#include "Data/SymbolStructs.cuh"
 
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
+
+    itemSettingsTable = new historicalWindowTable(this);
+
+    itemSettingsTable->setStyleSheet(ui->folderItemsTable->styleSheet());
+
+    ui->selectedFolderItemsWidget->layout()->addWidget(itemSettingsTable);
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
     connect(ui->symbolsTreeView, &QTreeView::clicked, this, &historicalWindow::treeViewItemClicked);
@@ -25,31 +34,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
     model->setHorizontalHeaderLabels({"Tree view"});
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    ui->tabWidget->setStyleSheet(R"(
-
-            QTabWidget::pane {
-                border: none;
-                background: transparent;
-            }
-
-
-QTabBar {
-        background-color: #ffffff;
-}
-
-
-    QTabBar::tab {
-        background: #2e2e2e;
-        color: white;
-        padding: 6px 12px;
-        border: 1px solid #555;
-        min-width: 100px;
-    }
-
-    QTabBar::tab:selected {
-        background: #3c3c3c;
-        border-color: #888;
-    })");
 
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setEnabled(true);
@@ -65,23 +49,31 @@ QTabBar {
     connect(ui->symbolsTreeView, &QTreeView::customContextMenuRequested,
             this, &historicalWindow::showTreeViewContextMenu);
 
-    ui->itemSettingsTable->setColumnCount(2);
-    ui->itemSettingsTable->setRowCount(10);
-    ui->itemSettingsTable->setHorizontalHeaderLabels({"USA-100, US Tech 100 Index CFD"});
-    ui->itemSettingsTable->verticalHeader()->setVisible(false);
-    ui->itemSettingsTable->horizontalHeader()->setVisible(false);
-    ui->itemSettingsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    itemSettingsTable->setColumnCount(2);
+    itemSettingsTable->setRowCount(10);
+    itemSettingsTable->setHorizontalHeaderLabels({"USA-100, US Tech 100 Index CFD"});
+    itemSettingsTable->verticalHeader()->setVisible(false);
+    itemSettingsTable->horizontalHeader()->setVisible(false);
+    itemSettingsTable->horizontalHeader()->setStretchLastSection(false);
+    itemSettingsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    itemSettingsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    itemSettingsTable->setItem(0, 0, new QTableWidgetItem("Digits"));
+    itemSettingsTable->setItem(0, 1, new QTableWidgetItem("1"));
+    itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
-    ui->itemSettingsTable->horizontalHeader()->setStretchLastSection(false); 
-    ui->itemSettingsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    ui->itemSettingsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    connect(itemSettingsTable, &historicalWindowTable::cellEditingFinished, this, &historicalWindow::settingValueChanged);
 
-    ui->itemSettingsTable->setItem(0, 0, new QTableWidgetItem("Digits"));
-    ui->itemSettingsTable->setItem(0, 1, new QTableWidgetItem("1"));
+    ui->folderItemsTable->horizontalHeader()->setVisible(false);
+    ui->folderItemsTable->setRowCount(1);
+    ui->folderItemsTable->setItem(0, 0, new QTableWidgetItem("Symbol"));
+    ui->folderItemsTable->setItem(0, 1, new QTableWidgetItem("Description"));
+    ui->folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
 
-    ui->itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
+    connect(ui->folderItemsTable, &QTableWidget::currentCellChanged, this, &historicalWindow::folderItemSelected);
 
     loadTreeViewItems();
+
+    connect(ui->folderItemsTable, &QTableWidget::itemChanged, this, &historicalWindow::symbolNameAccepted);
 }
 
 historicalWindow::~historicalWindow() {
@@ -134,73 +126,93 @@ void historicalWindow::loadTreeViewItems() {
 
 void historicalWindow::createSymbolClicked() {
 
-    return;
-    QStandardItem *documentsItem = new QStandardItem("New symbol");
-    model->appendRow({documentsItem});
+    QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
 
-    documentsItem->setEditable(true);
+    int rowCount = ui->folderItemsTable->rowCount();
 
-    ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(documentsItem));
-    ui->symbolsTreeView->edit(model->indexFromItem(documentsItem));
+    ui->folderItemsTable->setRowCount(rowCount + 1);
 
-    auto func = [this, documentsItem](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+    ui->folderItemsTable->setItem(rowCount, 0, item);
+    ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
 
-        const QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
+    ui->folderItemsTable->editItem(item);
 
-        qDebug() << lineEdit->text();
+    QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
 
-        const QString symbolPath = dataFolder + "/" + lineEdit->text() + ".hd";
+    QList<symbolSettings> initialItemSettings = {symbolSettings("ticker", "EURUSD"),
+        symbolSettings("description", "EUR/USD"),
+        symbolSettings("contract_size", "1")};
 
-        const QFileInfo fileInfo(symbolPath);
-        const QDir dir = fileInfo.absoluteDir();
+    if (file.open(QIODevice::WriteOnly)) {
+        QDataStream dataStream(&file);
 
-        if (!dir.exists()) {
-            dir.mkpath(".");
+        dataStream << initialItemSettings;
+
+        file.close();
+
+        item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
+    }
+}
+
+void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) {
+
+    QString cellDataPath = item->data(ItemDataPath).toString();
+
+    if (item->text().isEmpty()) {
+        return;
+    }
+
+    if (cellDataPath.isEmpty()) {
+
+        //QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
+
+        item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
+
+    }else {
+
+        QFile file = QFile(cellDataPath);
+
+        QString oldFileName = file.fileName().split('/').last();
+
+        if (file.fileName().split('/').last().split('.').first() != item->text()) {
+
+            file.rename(cellDataPath.remove(oldFileName) + "/" + item->text() + ".hd");
         }
 
-        QFile file(symbolPath);
-        if (file.open(QIODevice::WriteOnly)) {
-            QDataStream in(&file);
-
-            QString text = lineEdit->text();
-
-            in << text;
-
-            documentsItem->setData(symbolPath, ItemDataPath);
-        }
-    };
-
-    connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
+        item->setData(ItemDataPath, file.fileName());
+    }
 }
 
 void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
     const QStandardItem *item = model->itemFromIndex(index);
-    if (item) {
+    if (!item) {
         return;
     }
 
-    ui->selectedFolderItemsWidget->layout()->takeAt(0);
+    ui->folderItemsTable->setRowCount(1);
 
-    QLayoutItem* widgetItem;
+    currentFolder = item->data(ItemDataPath).toString();
 
-    while (( widgetItem = ui->selectedFolderItemsWidget->layout()->takeAt(0)) != nullptr) {
-        if (widgetItem->widget()) {
-            delete widgetItem->widget();
-        }
-        delete widgetItem;
-    }
-
-    QDirIterator it(item->data(ItemDataPath).toString(), QDir::Files);
+    QDirIterator it(currentFolder, QDir::Files);
 
     while (it.hasNext()) {
 
         const QString path = it.next();
+        const QString fileName = path.split('/').last().split('.').first();
 
-        ui->selectedFolderItemsWidget->layout()->addWidget(new QLabel(it.fileInfo().fileName()));
+        QTableWidgetItem *item = new QTableWidgetItem(fileName);
+
+        item->setData(ItemDataPath, path);
+
+        int rowCount = ui->folderItemsTable->rowCount();
+
+        ui->folderItemsTable->setRowCount(rowCount + 1);
+
+        ui->folderItemsTable->setItem(rowCount, 0, item);
+        ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+
     }
-
-    qobject_cast<QVBoxLayout*>(ui->selectedFolderItemsWidget->layout())->addStretch();
 }
 
 void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
@@ -277,7 +289,6 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
     if (selectedAction == addFolderAction) {
 
         QStandardItem *folderItem = new QStandardItem("New folder");
-        //model->appendRow({documentsItem});
 
         model->appendRow({folderItem});
 
@@ -311,4 +322,65 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
         connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
 
     }
+}
+
+void historicalWindow::folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn) {
+
+    currentFolderItem = ui->folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
+
+    QFile file = QFile(currentFolderItem);
+
+    QList<symbolSettings> itemSettings;
+
+    if (file.open(QIODevice::ReadOnly)) {
+        QDataStream dataStream(&file);
+
+        dataStream >> itemSettings;
+
+        file.close();
+
+        if (itemSettings.isEmpty()) {
+            itemSettings = {symbolSettings("ticker", "EURUAH"),
+                symbolSettings("description", ""),
+                symbolSettings("contract_size", "15")};
+        }
+    }
+
+    itemSettingsTable->setRowCount(static_cast<int>(itemSettings.size()));
+
+    for (int i = 0; i < itemSettings.size(); ++i) {
+
+        itemSettingsTable->setItem(i, 0, new QTableWidgetItem(itemSettings[i].settingName));
+
+        itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
+    }
+}
+
+void historicalWindow::settingValueChanged(int row, int column) {
+
+    QFile file = QFile(currentFolderItem);
+
+    QList<symbolSettings> itemSettings;
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QDataStream dataStream(&file);
+
+    dataStream >> itemSettings;
+
+    file.close();
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        return;
+    }
+
+    qDebug() << itemSettingsTable->item(row, column)->text();
+
+    itemSettings[row].settingValue = itemSettingsTable->item(row, column)->text();
+
+    dataStream << itemSettings;
+
+    file.close();
 }
