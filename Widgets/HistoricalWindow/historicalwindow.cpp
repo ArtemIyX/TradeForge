@@ -13,6 +13,8 @@
 #include <QDirIterator>
 #include <qmenu.h>
 #include <QTreeWidget>
+
+#include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
 #include "Data/SymbolStructs.cuh"
@@ -20,6 +22,12 @@
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
+
+    setWindowFlags(Qt::FramelessWindowHint);
+
+    QWidget* titleBar = new customTitleBar(this);
+
+    ui->titleBarWidget->layout()->addWidget(titleBar);
 
     itemSettingsTable = new historicalWindowTable(this);
 
@@ -403,9 +411,11 @@ void historicalWindow::settingValueChanged(int row, int column) {
 void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
     QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
-    if (!item) return;
+    if (!item or item->row() <= 0) return;
 
     QMenu contextMenu(this);
+
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     QAction *deleteAction = contextMenu.addAction("Удалить");
 

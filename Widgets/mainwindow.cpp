@@ -16,6 +16,17 @@ MainWindow::MainWindow(QWidget *parent)
             historicalMenuWidget = new historicalWindow();
 
             historicalMenuWidget->show();
+
+            connect(historicalMenuWidget, & QObject::destroyed, [this]() {
+
+                disconnect(historicalMenuWidget, nullptr, this, nullptr);
+
+                historicalMenuWidget = nullptr;
+            });
+
+        }else {
+
+            qDebug() << historicalMenuWidget->objectName();
         }
     });
 }

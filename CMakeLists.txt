@@ -23,6 +23,8 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/HistoricalWindow/CustomTable/historicatlWindowTable.cpp
         Widgets/HistoricalWindow/CustomTable/historicatlWindowTable.h
         Widgets/HistoricalWindow/Data/SymbolStructs.cuh
+        Widgets/TitleBar/customTitleBar.cpp
+        Widgets/TitleBar/customTitleBar.h
 )
 
 target_link_libraries(${PROJECT_NAME}
