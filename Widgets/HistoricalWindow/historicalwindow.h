@@ -27,17 +27,17 @@ public:
     explicit historicalWindow(QWidget *parent = nullptr);
     ~historicalWindow() override;
 
-    void loadTreeViewItems();
+    void loadTreeViewItems() const;
 
 public slots:
 
-    void createSymbolClicked();
-    void symbolNameAccepted(QTableWidgetItem* item);
+    void createSymbolClicked() const;
+    void symbolNameAccepted(QTableWidgetItem* item) const;
     void treeViewItemClicked(const QModelIndex &index);
     void showTreeViewContextMenu(const QPoint &pos);
     void showTreeViewHeaderContext(const QPoint &pos);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
-    void settingValueChanged(int row, int column);
+    void settingValueChanged(int row, int column) const;
     void showFolderItemsContextMenu(const QPoint &pos);
 
 private:

@@ -18,7 +18,8 @@ public:
 
 public slots:
 
-    void closeButtonClicked();
+    void closeButtonClicked() const;
+    void minimizeButtonClicked() const;
 
 protected:
 

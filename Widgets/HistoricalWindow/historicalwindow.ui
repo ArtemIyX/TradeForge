@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>622</width>
-    <height>540</height>
+    <width>617</width>
+    <height>570</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -190,20 +190,47 @@ QTabBar::tab:selected {
                   <string notr="true">QTreeView {
         background-color: #333333;
         color: white;
-        show-decoration-selected: 1;
+        show-decoration-selected: none;
 		 border-color: rgb(85, 85, 85);
 }
 
 QTreeView::item {
-        background-color: transparent;
+        padding: 2px;
+    	 border: none;
+    	 outline: none;
+}
+
+QTreeView::item:focus {
+    outline: none;
+	border: none;
+}
+
+QTreeView::item:selected,
+QTreeView::item:selected:active,
+QTreeView::item:selected:!active {
+    background: transparent;
+    color: white;
+    outline: none;
+	border: none;
 }
 
 QHeaderView::section {
         background-color: #333333;
         color: white;
-		border: none;
+		 border: none;
         padding: 4px;
+}
+
+QTreeView::branch {
+    image: none;
+    border-image: none;
+    background-color: transparent;
+    width: 8px;
+    height: 8px;
 }</string>
+                 </property>
+                 <property name="selectionMode">
+                  <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
                  </property>
                 </widget>
                </item>
@@ -272,6 +299,18 @@ border: 1px solid #555555;</string>
                   </spacer>
                  </item>
                  <item>
+                  <widget class="QLabel" name="itemSettingsName">
+                   <property name="styleSheet">
+                    <string notr="true">border: 0px solid black;
+color: rgb(255, 255, 255);
+padding-left: 2px;</string>
+                   </property>
+                   <property name="text">
+                    <string>USA-100</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QTableWidget" name="folderItemsTable">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -294,6 +333,16 @@ QHeaderView::section {
         border-left: none;
         border-right: 1px solid #555555;
 		 border-bottom: 1px solid #555555;
+}
+
+QTableView::item:selected:active {
+    background: #2e2e2e;
+    color: white;
+}
+
+QTableView::item:selected:!active {
+    background: #2e2e2e;             
+    color: white;                    
 }</string>
                    </property>
                    <property name="rowCount">
@@ -313,19 +362,10 @@ QHeaderView::section {
                    <column/>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="itemSettingsName">
-                   <property name="styleSheet">
-                    <string notr="true">border: 0px solid black;
-color: rgb(255, 255, 255);
-padding-left: 2px;</string>
-                   </property>
-                   <property name="text">
-                    <string>USA-100</string>
-                   </property>
-                  </widget>
-                 </item>
                 </layout>
+                <zorder>folderItemsTable</zorder>
+                <zorder>lineEdit</zorder>
+                <zorder>itemSettingsName</zorder>
                </widget>
               </item>
              </layout>

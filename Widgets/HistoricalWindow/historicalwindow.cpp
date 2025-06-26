@@ -59,14 +59,12 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     itemSettingsTable->setColumnCount(2);
     itemSettingsTable->setRowCount(10);
-    itemSettingsTable->setHorizontalHeaderLabels({"USA-100, US Tech 100 Index CFD"});
+    itemSettingsTable->setHorizontalHeaderLabels({""});
     itemSettingsTable->verticalHeader()->setVisible(false);
     itemSettingsTable->horizontalHeader()->setVisible(false);
     itemSettingsTable->horizontalHeader()->setStretchLastSection(false);
     itemSettingsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     itemSettingsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    itemSettingsTable->setItem(0, 0, new QTableWidgetItem("Digits"));
-    itemSettingsTable->setItem(0, 1, new QTableWidgetItem("1"));
     itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
     connect(itemSettingsTable, &historicalWindowTable::cellEditingFinished, this, &historicalWindow::settingValueChanged);
@@ -91,13 +89,11 @@ historicalWindow::~historicalWindow() {
     delete ui;
 }
 
-void historicalWindow::loadTreeViewItems() {
+void historicalWindow::loadTreeViewItems() const {
 
     if (!QDir(dataFolder).exists()) {
         QDir(dataFolder).mkdir(dataFolder);
     }
-
-    QHash<QString, QTreeWidgetItem*> pathItems;
 
     QDirIterator it(dataFolder, QDir::Dirs | QDir::NoDotAndDotDot,
                        QDirIterator::Subdirectories);
@@ -135,11 +131,11 @@ void historicalWindow::loadTreeViewItems() {
     }
 }
 
-void historicalWindow::createSymbolClicked() {
+void historicalWindow::createSymbolClicked() const {
 
     QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
 
-    int rowCount = ui->folderItemsTable->rowCount();
+    const int rowCount = ui->folderItemsTable->rowCount();
 
     ui->folderItemsTable->setRowCount(rowCount + 1);
 
@@ -150,9 +146,17 @@ void historicalWindow::createSymbolClicked() {
 
     QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
 
-    QList<symbolSettings> initialItemSettings = {symbolSettings("ticker", "EURUSD"),
-        symbolSettings("description", "EUR/USD"),
-        symbolSettings("contract_size", "1")};
+    QList<symbolSettings> initialItemSettings = {{"ticker", "EURUSD"},
+        {"description", "EUR/USD"},
+        {"contract_size", "1"},
+        {"units", "Share(s)"},
+        {"min_volume", 1},
+        {"max_volume", 100000000},
+        {"volume_step", 0.01},
+        {"min_tick", 0.00001},
+        {"leverage", 0.05},
+        {"trade_mode", "full"}
+    };
 
     if (file.open(QIODevice::WriteOnly)) {
         QDataStream dataStream(&file);
@@ -165,7 +169,7 @@ void historicalWindow::createSymbolClicked() {
     }
 }
 
-void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) {
+void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
 
     QString cellDataPath = item->data(ItemDataPath).toString();
 
@@ -175,15 +179,12 @@ void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) {
 
     if (cellDataPath.isEmpty()) {
 
-        //QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
-
         item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
-
     }else {
 
         QFile file = QFile(cellDataPath);
 
-        QString oldFileName = file.fileName().split('/').last();
+        const QString oldFileName = file.fileName().split('/').last();
 
         if (file.fileName().split('/').last().split('.').first() != item->text()) {
 
@@ -310,7 +311,6 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
     const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
 
     if (selectedAction == addFolderAction) {
-
         QStandardItem *folderItem = new QStandardItem("New folder");
 
         model->appendRow({folderItem});
@@ -379,7 +379,7 @@ void historicalWindow::folderItemSelected(int currentRow, int currentColumn, int
     }
 }
 
-void historicalWindow::settingValueChanged(int row, int column) {
+void historicalWindow::settingValueChanged(const int row, const int column) const {
 
     QFile file = QFile(currentFolderItem);
 
@@ -410,20 +410,19 @@ void historicalWindow::settingValueChanged(int row, int column) {
 
 void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
-    QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
+    const QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
     if (!item or item->row() <= 0) return;
 
     QMenu contextMenu(this);
 
     contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
-    QAction *deleteAction = contextMenu.addAction("Удалить");
-
-    QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
+    const QAction *deleteAction = contextMenu.addAction("Удалить");
+    const QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
 
     if (selectedAction == deleteAction) {
 
-        QString pathToData = item->data(ItemDataPath).toString();
+        const QString pathToData = item->data(ItemDataPath).toString();
         QFile::remove(pathToData);
 
         ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
