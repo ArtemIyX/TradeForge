@@ -10,6 +10,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
 
 qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         main.cpp
+        resources/resources.qrc
         Widgets/mainwindow.cpp
         Widgets/mainwindow.h
         Widgets/mainwindow.ui
@@ -28,7 +29,7 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PRIVATE
+        PRIVATE
         Qt::Core
         Qt::Widgets
 )

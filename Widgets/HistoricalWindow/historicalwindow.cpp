@@ -13,7 +13,9 @@
 #include <QDirIterator>
 #include <qmenu.h>
 #include <QTreeWidget>
-
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QFileDialog>
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
@@ -22,6 +24,12 @@
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
+
+    connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
+    connect(ui->importButton, SIGNAL(clicked()), this, SLOT(importFileClicked()));
+
+    ui->createSymbolButton->setDisabled(true);
+    ui->importButton->setDisabled(true);
 
     setWindowFlags(Qt::FramelessWindowHint);
 
@@ -35,9 +43,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     ui->selectedFolderItemsWidget->layout()->addWidget(itemSettingsTable);
 
-    connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
-    connect(ui->symbolsTreeView, &QTreeView::clicked, this, &historicalWindow::treeViewItemClicked);
-
     model = new QStandardItemModel(this);
     model->setHorizontalHeaderLabels({"Tree view"});
 
@@ -45,17 +50,29 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setEnabled(true);
-
     ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
 
     ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->symbolsTreeView->header(), &QHeaderView::customContextMenuRequested,
             this, &historicalWindow::showTreeViewHeaderContext);
 
+    connect(ui->symbolsTreeView, &QTreeView::clicked, this, &historicalWindow::treeViewItemClicked);
 
     ui->symbolsTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->symbolsTreeView, &QTreeView::customContextMenuRequested,
             this, &historicalWindow::showTreeViewContextMenu);
+
+    connect(model, &QAbstractItemModel::rowsInserted, this,
+        [this](const QModelIndex& parentLoc, int, int){
+
+            updateTreeViewItemIcon(parentLoc);
+    });
+
+    connect(model, &QAbstractItemModel::rowsRemoved, this,
+            [this](const QModelIndex& parentLoc, int, int){
+
+                updateTreeViewItemIcon(parentLoc);
+    });
 
     itemSettingsTable->setColumnCount(2);
     itemSettingsTable->setRowCount(10);
@@ -126,12 +143,28 @@ void historicalWindow::loadTreeViewItems() const {
                 newItem->setData(path, ItemDataPath);
                 parentItem->appendRow(newItem);
                 current = newItem;
+                updateTreeViewItemIcon(model->indexFromItem(newItem));
             }
         }
     }
 }
 
+void historicalWindow::updateTreeViewItemIcon(const QModelIndex &index) const {
+
+    if (!index.isValid()) return;
+    if (model->rowCount(index) == 0) {
+
+        model->setData(index, QApplication::style()->standardIcon(QStyle::SP_DirIcon), Qt::DecorationRole);
+    }else {
+
+        model->setData(index, QIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon)), Qt::DecorationRole);
+    }
+}
+
+
 void historicalWindow::createSymbolClicked() const {
+
+    if (currentFolder.isEmpty()) { return;}
 
     QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
 
@@ -169,6 +202,19 @@ void historicalWindow::createSymbolClicked() const {
     }
 }
 
+void historicalWindow::importFileClicked() {
+
+    if (currentFolderItem.isEmpty()) { return; }
+    
+    QStringList fileNames = QFileDialog::getOpenFileNames(
+        this,
+        "Выберите файлы для импорта",
+        "",
+        "CSV таблицы (*.csv*)"
+    );
+
+}
+
 void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
 
     QString cellDataPath = item->data(ItemDataPath).toString();
@@ -204,6 +250,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
     ui->folderItemsTable->setRowCount(1);
 
+    ui->createSymbolButton->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
 
     QDirIterator it(currentFolder, QDir::Files);
@@ -255,32 +302,7 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
         ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
         ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
 
-        bool bTrue = false;
-
-        auto func = [this, folderItem, &bTrue](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
-
-            if (bTrue == true) {
-                return;
-            }
-            bTrue = true;
-
-            const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
-            const QString folderPath = folderItem->data(ItemDataPath).toString() + "/" + lineEdit->text();
-            const QDir dir(folderPath);
-
-
-            if (!dir.exists()) {
-
-                dir.mkpath(folderPath);
-                folderItem->setData(folderPath, ItemDataPath);
-
-            }else {
-
-                model->removeRow(0, model->indexFromItem(folderItem));
-            }
-        };
-
-        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
+        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, &historicalWindow::treeViewSubDirectoryCreated);
 
     } else if (selectedAction == deleteAction) {
 
@@ -300,6 +322,27 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
     }
 }
 
+void historicalWindow::treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+
+    disconnect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, &historicalWindow::treeViewSubDirectoryCreated);
+
+    QStandardItem *folderItem = model->itemFromIndex(ui->symbolsTreeView->currentIndex());
+
+    const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    const QString folderPath = folderItem->data(ItemDataPath).toString() + "/" + lineEdit->text();
+    const QDir dir(folderPath);
+
+    if (!dir.exists()) {
+
+        dir.mkpath(folderPath);
+        folderItem->setData(folderPath, ItemDataPath);
+
+    }else {
+
+        model->removeRow(0, model->indexFromItem(folderItem));
+    }
+}
+
 void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
 
     QMenu contextMenu(this);
@@ -307,7 +350,6 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
     contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     const QAction *addFolderAction = contextMenu.addAction("Add folder");
-
     const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
 
     if (selectedAction == addFolderAction) {
@@ -320,35 +362,35 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
         ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
         ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
 
-        auto func = [this, folderItem](QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor,
+            this, &historicalWindow::treeViewHeaderSubDirCreated);
+    }
+}
 
-            const QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
+void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
 
-            const QString symbolPath = dataFolder + "/" + lineEdit->text();
+    disconnect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor,
+            this, &historicalWindow::treeViewHeaderSubDirCreated);
 
-            const QDir dir(symbolPath);
+    const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    const QString symbolPath = dataFolder + "/" + lineEdit->text();
+    const QDir dir(symbolPath);
 
-            if (!dir.exists()) {
+    QStandardItem *folderItem = model->itemFromIndex(ui->symbolsTreeView->currentIndex());
 
-                qDebug() << dir.mkpath(symbolPath);
+    if (!dir.exists()) {
 
-                folderItem->setData(dataFolder + "/" + lineEdit->text(), ItemDataPath);
+        dir.mkpath(symbolPath);
+        folderItem->setData(dataFolder + "/" + lineEdit->text(), ItemDataPath);
+    }else {
 
-                qDebug() << folderItem->data(ItemDataPath).toString();
-
-            }else {
-
-                model->removeRow(0, model->indexFromItem(folderItem));
-            }
-        };
-
-        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, func);
-
+        model->removeRow(0, model->indexFromItem(folderItem));
     }
 }
 
 void historicalWindow::folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
+    ui->importButton->setDisabled(false);
     currentFolderItem = ui->folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
 
     QFile file = QFile(currentFolderItem);
@@ -426,7 +468,5 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         QFile::remove(pathToData);
 
         ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
-
-
     }
 }

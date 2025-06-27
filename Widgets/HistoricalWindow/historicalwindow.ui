@@ -227,6 +227,16 @@ QTreeView::branch {
     background-color: transparent;
     width: 8px;
     height: 8px;
+}
+
+QTreeView::branch:has-children:!has-siblings:closed,
+QTreeView::branch:closed:has-children {
+        image: url(:/icons/arrow_right.png);
+}
+
+QTreeView::branch:has-children:!has-siblings:open,
+QTreeView::branch:open:has-children {
+        image: url(:/icons/arrow_down.png)
 }</string>
                  </property>
                  <property name="selectionMode">
@@ -400,28 +410,32 @@ QTableView::item:selected:!active {
         <number>5</number>
        </property>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="importButton">
          <property name="styleSheet">
           <string notr="true">QPushButton{
-	
-	color: #CCCCCC;
+	color: #fff;
 	border: 1px solid rgb(102, 102, 102);
 	background-color: rgb(58, 58, 58);
 	padding: 3px 2px;
 }
 QPushButton::hover{
-
-    color: #fff;
+    color: #CCCCCC;
 	background-color: #666666;
 	padding: 3px 2px;
 }
 QPushButton::pressed {
 	background-color: #ffffff;
 	padding: 3px 2px;
+}
+
+QPushButton::disabled{
+	color: #CCCCCC;
+	background-color: #666666;
+	padding: 3px 2px;
 }</string>
          </property>
          <property name="text">
-          <string>Show Symbol</string>
+          <string>Import csv</string>
          </property>
         </widget>
        </item>
@@ -429,20 +443,24 @@ QPushButton::pressed {
         <widget class="QPushButton" name="pushButton_3">
          <property name="styleSheet">
           <string notr="true">QPushButton{
-	
-	color: #CCCCCC;
+	color: #fff;
 	border: 1px solid rgb(102, 102, 102);
 	background-color: rgb(58, 58, 58);
 	padding: 3px 2px;
 }
 QPushButton::hover{
-
-    color: #fff;
+    color: #CCCCCC;
 	background-color: #666666;
 	padding: 3px 2px;
 }
 QPushButton::pressed {
 	background-color: #ffffff;
+	padding: 3px 2px;
+}
+
+QPushButton::disabled{
+	color: #CCCCCC;
+	background-color: #666666;
 	padding: 3px 2px;
 }</string>
          </property>
@@ -455,18 +473,23 @@ QPushButton::pressed {
         <widget class="QPushButton" name="createSymbolButton">
          <property name="styleSheet">
           <string notr="true">QPushButton{
-	
-	color: #CCCCCC;
+	color: #fff;
 	border: 1px solid rgb(102, 102, 102);
 	background-color: rgb(58, 58, 58);
 	padding: 3px 2px;
 }
 QPushButton::hover{
-
-    color: #fff;
+    color: #CCCCCC;
 	background-color: #666666;
 	padding: 3px 2px;
 }
+
+QPushButton::disabled{
+	color: #CCCCCC;
+	background-color: #666666;
+	padding: 3px 2px;
+}
+
 QPushButton::pressed {
 	background-color: #ffffff;
 	padding: 3px 2px;
@@ -494,21 +517,25 @@ QPushButton::pressed {
         <widget class="QPushButton" name="pushButton_2">
          <property name="styleSheet">
           <string notr="true">QPushButton{
-	
-	color: #CCCCCC;
+	color: #fff;
 	border: 1px solid rgb(102, 102, 102);
 	background-color: rgb(58, 58, 58);
-	padding: 3px 15px;
+	padding: 3px 2px;
 }
 QPushButton::hover{
-
-    color: #fff;
+    color: #CCCCCC;
 	background-color: #666666;
-	padding: 3px 15px;
+	padding: 3px 2px;
 }
 QPushButton::pressed {
 	background-color: #ffffff;
-	padding: 3px 15px;
+	padding: 3px 2px;
+}
+
+QPushButton::disabled{
+	color: #CCCCCC;
+	background-color: #666666;
+	padding: 3px 2px;
 }</string>
          </property>
          <property name="text">

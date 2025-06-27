@@ -8,6 +8,8 @@
 #include <QDialog>
 #include <QDir>
 
+#include "Components/customStyledItemDelegate.h"
+
 class historicalWindowTable;
 class QTableWidgetItem;
 
@@ -32,10 +34,14 @@ public:
 public slots:
 
     void createSymbolClicked() const;
+    void importFileClicked();
+
     void symbolNameAccepted(QTableWidgetItem* item) const;
     void treeViewItemClicked(const QModelIndex &index);
     void showTreeViewContextMenu(const QPoint &pos);
+    void treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
     void showTreeViewHeaderContext(const QPoint &pos);
+    void treeViewHeaderSubDirCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void settingValueChanged(int row, int column) const;
     void showFolderItemsContextMenu(const QPoint &pos);
@@ -50,8 +56,9 @@ private:
     QStandardItemModel *model;
 
     QString currentFolder = "";
-
     QString currentFolderItem = "";
+
+    void updateTreeViewItemIcon(const QModelIndex& index) const;
 };
 
 
