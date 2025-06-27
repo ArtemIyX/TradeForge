@@ -45,6 +45,7 @@ public slots:
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void settingValueChanged(int row, int column) const;
     void showFolderItemsContextMenu(const QPoint &pos);
+    void tabBarClicked(int index);
 
 private:
     Ui::historicalWindow *ui;

@@ -136,10 +136,15 @@ QTabBar::tab:selected {
         background: #3c3c3c;
         border-color: #888;
 }
-</string>
+
+QTabBar::tab:disabled {
+        background: rgb(35, 35, 35);
+        border-color: #353535;
+		 color: rgb(150, 150, 150);
+}</string>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="specificationTab">
            <property name="styleSheet">
@@ -389,6 +394,51 @@ QTableView::item:selected:!active {
            <attribute name="title">
             <string>Bars</string>
            </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_7">
+            <item>
+             <widget class="QTableWidget" name="symbolDataTableWidget">
+              <property name="styleSheet">
+               <string notr="true">QTableWidget {
+        border: 1px solid #666666;
+        gridline-color: #555555;
+		 color: #fff;
+}
+
+QHeaderView::section {
+        background-color: #2e2e2e; 
+        color: #CCCCCC;              
+        padding: 4px;
+        border-top: none;
+        border-left: none;
+        border-right: 1px solid #555555;
+		 border-bottom: 1px solid #555555;
+}
+
+QTableView::item:selected:active {
+    background: #2e2e2e;
+    color: white;
+}
+
+QTableView::item:selected:!active {
+    background: #2e2e2e;             
+    color: white;                    
+}</string>
+              </property>
+              <property name="rowCount">
+               <number>0</number>
+              </property>
+              <property name="columnCount">
+               <number>0</number>
+              </property>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>false</bool>
+              </attribute>
+              <attribute name="verticalHeaderVisible">
+               <bool>false</bool>
+              </attribute>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>

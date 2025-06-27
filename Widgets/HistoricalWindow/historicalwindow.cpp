@@ -34,7 +34,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
     setWindowFlags(Qt::FramelessWindowHint);
 
     QWidget* titleBar = new customTitleBar(this);
-
     ui->titleBarWidget->layout()->addWidget(titleBar);
 
     itemSettingsTable = new historicalWindowTable(this);
@@ -47,6 +46,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     model->setHorizontalHeaderLabels({"Tree view"});
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    ui->tabWidget->setTabEnabled(1, false);
 
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setEnabled(true);
@@ -100,6 +100,14 @@ historicalWindow::historicalWindow(QWidget *parent) :
     loadTreeViewItems();
 
     connect(ui->folderItemsTable, &QTableWidget::itemChanged, this, &historicalWindow::symbolNameAccepted);
+
+    ui->symbolDataTableWidget->setColumnCount(6);
+    ui->symbolDataTableWidget->resizeColumnsToContents();
+    ui->symbolDataTableWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->symbolDataTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    ui->symbolDataTableWidget->setHorizontalHeaderLabels({"Date","Open","High","Low","Close","Volume" });
+
+    connect(ui->tabWidget, &QTabWidget::tabBarClicked, this, &historicalWindow::tabBarClicked);
 }
 
 historicalWindow::~historicalWindow() {
@@ -206,13 +214,82 @@ void historicalWindow::importFileClicked() {
 
     if (currentFolderItem.isEmpty()) { return; }
     
-    QStringList fileNames = QFileDialog::getOpenFileNames(
+    QString fileName = QFileDialog::getOpenFileName(
         this,
-        "Выберите файлы для импорта",
+        "Выберите файл для импорта",
         "",
-        "CSV таблицы (*.csv*)"
+        "CSV таблица (*.csv*)"
     );
 
+    QFile file(fileName);
+    QFile historicalData(currentFolderItem.split('.').first() + ".data");
+
+    if (!historicalData.open(QIODevice::WriteOnly)) {
+        return;
+    }
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QDataStream dataStream(&historicalData);
+    QTextStream in(&file);
+    in.setAutoDetectUnicode(true);
+
+    QList<historicalCSVStroke> data;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList fields;
+        historicalCSVStroke stroke;
+
+        if (!line.contains('"')) {
+            fields = line.split(',');
+        }
+
+        QString dateTimeStr = fields[0].left(19);  // "2025-06-23 00:00:00"
+        QString offsetStr = fields[0].mid(19);     // "-04:00"
+
+        QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
+        dt.setTimeZone(QTimeZone::utc());
+
+        QRegularExpression re("([+-])(\\d{2}):(\\d{2})");
+        QRegularExpressionMatch match = re.match(offsetStr);
+        if (match.hasMatch()) {
+            int hours = match.captured(2).toInt();
+            int minutes = match.captured(3).toInt();
+            int offsetSecs = hours * 3600 + minutes * 60;
+            if (match.captured(1) == "-")
+                offsetSecs = -offsetSecs;
+
+            QTimeZone tz(offsetSecs);
+            dt.setTimeZone(tz);
+        }
+
+        stroke.timestamp = dt.toSecsSinceEpoch();
+        stroke.open = fields[1].toDouble();
+        stroke.high = fields[2].toDouble();
+        stroke.low = fields[3].toDouble();
+        stroke.close = fields[4].toDouble();
+        stroke.volume = fields[5].toLongLong();
+
+        if (stroke.isValid()) {
+
+            data.append(stroke);
+        }else {
+            qDebug() << "Found not valid stroke or it first stroke";
+        }
+    }
+
+    for (historicalCSVStroke stroke : data) {
+
+        historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
+    }
+
+    file.close();
+    historicalData.close();
+
+    ui->tabWidget->setTabEnabled(1, true);
 }
 
 void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
@@ -259,6 +336,10 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
         const QString path = it.next();
         const QString fileName = path.split('/').last().split('.').first();
+
+        if (it.filePath().split('.').last() != "hd") {
+            continue;
+        }
 
         QTableWidgetItem *item = new QTableWidgetItem(fileName);
 
@@ -393,7 +474,15 @@ void historicalWindow::folderItemSelected(int currentRow, int currentColumn, int
     ui->importButton->setDisabled(false);
     currentFolderItem = ui->folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
 
-    QFile file = QFile(currentFolderItem);
+    if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {
+
+        ui->tabWidget->setTabEnabled(1, true);
+    }else {
+
+        ui->tabWidget->setTabEnabled(1, false);
+    }
+
+    QFile file(currentFolderItem);
 
     QList<symbolSettings> itemSettings;
 
@@ -468,5 +557,50 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         QFile::remove(pathToData);
 
         ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
+    }
+}
+
+void historicalWindow::tabBarClicked(int index) {
+
+    if (index == 1) {
+
+        QString path = currentFolderItem.split('.').first() + ".data";
+
+        QFile historicalData(path);
+
+        if (!historicalData.open(QIODevice::ReadOnly)) {
+            qDebug() << "Fail to open file: " << historicalData.errorString();
+            return;
+        }
+
+        while (!historicalData.atEnd()) {
+            historicalCSVStroke stroke;
+            qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
+            if (bytesRead == sizeof(historicalCSVStroke)) {
+
+                if (!stroke.isValid()) {
+                    qDebug() << "Found not valid stroke or it first stroke";
+                    continue;
+                }
+
+                const int rowCount = ui->symbolDataTableWidget->rowCount();
+                ui->symbolDataTableWidget->setRowCount(rowCount + 1);
+
+                ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString()));
+                ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
+                ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
+                ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
+                ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
+                ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+            } else {
+                qWarning() << "Неполная запись или повреждённый файл.";
+                break;
+            }
+        }
+
+        historicalData.close();
+    }else {
+
+
     }
 }
