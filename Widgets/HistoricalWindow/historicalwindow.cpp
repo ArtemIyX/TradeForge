@@ -16,6 +16,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFileDialog>
+#include <QMouseEvent>
+
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
@@ -25,16 +27,17 @@ historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
 
+    setMouseTracking(true);
+    setWindowFlags(Qt::FramelessWindowHint);
+
+    QWidget* titleBar = new customTitleBar(this);
+    ui->titleBarWidget->layout()->addWidget(titleBar);
+
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
     connect(ui->importButton, SIGNAL(clicked()), this, SLOT(importFileClicked()));
 
     ui->createSymbolButton->setDisabled(true);
     ui->importButton->setDisabled(true);
-
-    setWindowFlags(Qt::FramelessWindowHint);
-
-    QWidget* titleBar = new customTitleBar(this);
-    ui->titleBarWidget->layout()->addWidget(titleBar);
 
     itemSettingsTable = new historicalWindowTable(this);
 
@@ -47,6 +50,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     ui->tabWidget->setTabEnabled(1, false);
+    ui->tabWidget->setTabEnabled(2, false);
 
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setEnabled(true);
@@ -86,10 +90,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(itemSettingsTable, &historicalWindowTable::cellEditingFinished, this, &historicalWindow::settingValueChanged);
 
-    ui->folderItemsTable->horizontalHeader()->setVisible(false);
-    ui->folderItemsTable->setRowCount(1);
-    ui->folderItemsTable->setItem(0, 0, new QTableWidgetItem("Symbol"));
-    ui->folderItemsTable->setItem(0, 1, new QTableWidgetItem("Description"));
+    ui->folderItemsTable->setHorizontalHeaderLabels({"Symbol","Description" });
     ui->folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
     ui->folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->folderItemsTable, &QTableWidget::customContextMenuRequested,
@@ -155,6 +156,69 @@ void historicalWindow::loadTreeViewItems() const {
             }
         }
     }
+}
+
+void historicalWindow::mousePressEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton) {
+        resizeEdges = edgesAt(event->pos());
+        if (resizeEdges != Qt::Edges()) {
+            resizing = true;
+            dragStartPos = event->globalPos();
+            event->accept();
+        }
+    }
+}
+
+void historicalWindow::mouseMoveEvent(QMouseEvent *event) {
+    if (resizing) {
+        QPoint delta = event->globalPos() - dragStartPos;
+        QRect geom = geometry();
+
+        if (resizeEdges.testFlag(Qt::LeftEdge))
+            geom.setLeft(geom.left() + delta.x());
+        if (resizeEdges.testFlag(Qt::RightEdge))
+            geom.setRight(geom.right() + delta.x());
+        if (resizeEdges.testFlag(Qt::TopEdge))
+            geom.setTop(geom.top() + delta.y());
+        if (resizeEdges.testFlag(Qt::BottomEdge))
+            geom.setBottom(geom.bottom() + delta.y());
+
+        setGeometry(geom);
+        dragStartPos = event->globalPos();
+    } else {
+        updateCursorShape(event->pos());
+    }
+}
+
+void historicalWindow::mouseReleaseEvent(QMouseEvent *event) {
+    resizing = false;
+}
+
+Qt::Edges historicalWindow::edgesAt(const QPoint &pos) const {
+    Qt::Edges edges;
+    if (pos.x() <= RESIZE_MARGIN)
+        edges |= Qt::LeftEdge;
+    if (pos.x() >= width() - RESIZE_MARGIN)
+        edges |= Qt::RightEdge;
+    if (pos.y() <= RESIZE_MARGIN)
+        edges |= Qt::TopEdge;
+    if (pos.y() >= height() - RESIZE_MARGIN)
+        edges |= Qt::BottomEdge;
+    return edges;
+}
+
+void historicalWindow::updateCursorShape(const QPoint &pos) {
+    const Qt::Edges edges = edgesAt(pos);
+    if (edges == (Qt::LeftEdge | Qt::TopEdge) || edges == (Qt::RightEdge | Qt::BottomEdge))
+        setCursor(Qt::SizeFDiagCursor);
+    else if (edges == (Qt::RightEdge | Qt::TopEdge) || edges == (Qt::LeftEdge | Qt::BottomEdge))
+        setCursor(Qt::SizeBDiagCursor);
+    else if (edges.testFlag(Qt::LeftEdge) || edges.testFlag(Qt::RightEdge))
+        setCursor(Qt::SizeHorCursor);
+    else if (edges.testFlag(Qt::TopEdge) || edges.testFlag(Qt::BottomEdge))
+        setCursor(Qt::SizeVerCursor);
+    else
+        setCursor(Qt::ArrowCursor);
 }
 
 void historicalWindow::updateTreeViewItemIcon(const QModelIndex &index) const {
@@ -469,9 +533,13 @@ void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractIte
     }
 }
 
-void historicalWindow::folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn) {
+void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
     ui->importButton->setDisabled(false);
+    if (!ui->folderItemsTable->item(currentRow, 0)) {
+        qDebug() << "historicalWindow::folderItemSelected: cell in row " << currentRow << " not valid maybe click on table without selected folder";
+        return;
+    }
     currentFolderItem = ui->folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
 
     if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {

@@ -31,6 +31,11 @@ public:
 
     void loadTreeViewItems() const;
 
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+
+
 public slots:
 
     void createSymbolClicked() const;
@@ -58,6 +63,14 @@ private:
 
     QString currentFolder = "";
     QString currentFolderItem = "";
+
+    const int RESIZE_MARGIN = 5;
+    bool resizing = false;
+    QPoint dragStartPos;
+    Qt::Edges resizeEdges;
+
+    Qt::Edges edgesAt(const QPoint &pos) const;
+    void updateCursorShape(const QPoint &pos);
 
     void updateTreeViewItemIcon(const QModelIndex& index) const;
 };

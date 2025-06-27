@@ -144,7 +144,7 @@ QTabBar::tab:disabled {
 }</string>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="specificationTab">
            <property name="styleSheet">
@@ -439,6 +439,11 @@ QTableView::item:selected:!active {
              </widget>
             </item>
            </layout>
+          </widget>
+          <widget class="QWidget" name="tab">
+           <attribute name="title">
+            <string>Table</string>
+           </attribute>
           </widget>
          </widget>
         </item>
