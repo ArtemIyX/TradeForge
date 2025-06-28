@@ -355,7 +355,7 @@ void historicalWindow::exportFileClicked() {
     }
 
     const QLocale locale;
-    const QChar sep = (locale.decimalPoint() == ',') ? ';' : ',';
+    const QChar sep = ',';
 
     const QString filePath = dirPath + "/" + currentFolderItem.split('/').last().split('.').first() + ".csv";
 
