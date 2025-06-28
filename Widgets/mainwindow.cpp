@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
 
             historicalMenuWidget->show();
 
-            connect(historicalMenuWidget, & QObject::destroyed, [this]() {
+            connect(historicalMenuWidget, Q_SIGNAL(&QObject::destroyed), [this]() {
 
                 disconnect(historicalMenuWidget, nullptr, this, nullptr);
 

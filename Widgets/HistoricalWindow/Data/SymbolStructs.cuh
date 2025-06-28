@@ -4,10 +4,8 @@
 
 #ifndef SYMBOLSTRUCTS_CUH
 #define SYMBOLSTRUCTS_CUH
-#include <qscreen_platform.h>
 #include <QString>
 #include <QVariant>
-#include <utility>
 
 struct symbolSettings {
 
@@ -51,15 +49,6 @@ struct historicalCSVStroke{
 
     bool isValid() const {
         return timestamp != 0 and open != 0 and high != 0 and low != 0 and close != 0; ;
-    }
-
-    QString toString() const {
-        return getDate().toString("yyyy-MM-dd hh:mm:ss") + " " +
-               QString::number(open) + " " +
-               QString::number(high) + " " +
-               QString::number(low) + " " +
-               QString::number(close) + " " +
-               QString::number(volume);
     }
 };
 #pragma pack(pop)

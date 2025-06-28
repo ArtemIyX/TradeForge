@@ -17,7 +17,6 @@
 #include <QJsonObject>
 #include <QFileDialog>
 #include <QMouseEvent>
-
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
@@ -35,6 +34,8 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
     connect(ui->importButton, SIGNAL(clicked()), this, SLOT(importFileClicked()));
+
+    connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
 
     ui->createSymbolButton->setDisabled(true);
     ui->importButton->setDisabled(true);
@@ -57,22 +58,22 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
 
     ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->symbolsTreeView->header(), &QHeaderView::customContextMenuRequested,
+    connect(ui->symbolsTreeView->header(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
             this, &historicalWindow::showTreeViewHeaderContext);
 
-    connect(ui->symbolsTreeView, &QTreeView::clicked, this, &historicalWindow::treeViewItemClicked);
+    connect(ui->symbolsTreeView, Q_SIGNAL(&QTreeView::clicked), this, &historicalWindow::treeViewItemClicked);
 
     ui->symbolsTreeView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->symbolsTreeView, &QTreeView::customContextMenuRequested,
+    connect(ui->symbolsTreeView, Q_SIGNAL(&QTreeView::customContextMenuRequested),
             this, &historicalWindow::showTreeViewContextMenu);
 
-    connect(model, &QAbstractItemModel::rowsInserted, this,
+    connect(model, Q_SIGNAL(&QAbstractItemModel::rowsInserted), this,
         [this](const QModelIndex& parentLoc, int, int){
 
             updateTreeViewItemIcon(parentLoc);
     });
 
-    connect(model, &QAbstractItemModel::rowsRemoved, this,
+    connect(model, Q_SIGNAL(&QAbstractItemModel::rowsRemoved), this,
             [this](const QModelIndex& parentLoc, int, int){
 
                 updateTreeViewItemIcon(parentLoc);
@@ -88,19 +89,19 @@ historicalWindow::historicalWindow(QWidget *parent) :
     itemSettingsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
 
-    connect(itemSettingsTable, &historicalWindowTable::cellEditingFinished, this, &historicalWindow::settingValueChanged);
+    connect(itemSettingsTable, Q_SIGNAL(&historicalWindowTable::cellEditingFinished), this, &historicalWindow::settingValueChanged);
 
     ui->folderItemsTable->setHorizontalHeaderLabels({"Symbol","Description" });
     ui->folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
     ui->folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->folderItemsTable, &QTableWidget::customContextMenuRequested,
+    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::customContextMenuRequested),
         this, &historicalWindow::showFolderItemsContextMenu);
 
-    connect(ui->folderItemsTable, &QTableWidget::currentCellChanged, this, &historicalWindow::folderItemSelected);
+    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::currentCellChanged), this, &historicalWindow::folderItemSelected);
 
     loadTreeViewItems();
 
-    connect(ui->folderItemsTable, &QTableWidget::itemChanged, this, &historicalWindow::symbolNameAccepted);
+    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
 
     ui->symbolDataTableWidget->setColumnCount(6);
     ui->symbolDataTableWidget->resizeColumnsToContents();
@@ -108,7 +109,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->symbolDataTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->symbolDataTableWidget->setHorizontalHeaderLabels({"Date","Open","High","Low","Close","Volume" });
 
-    connect(ui->tabWidget, &QTabWidget::tabBarClicked, this, &historicalWindow::tabBarClicked);
+    connect(ui->tabWidget, Q_SIGNAL(&QTabWidget::tabBarClicked), this, &historicalWindow::tabBarClicked);
 }
 
 historicalWindow::~historicalWindow() {
@@ -132,9 +133,7 @@ void historicalWindow::loadTreeViewItems() const {
         QStringList parts = relativePath.split("/", Qt::SkipEmptyParts);
 
         QStandardItem* current = nullptr;
-        for (int i = 0; i < parts.size(); ++i) {
-            const QString& part = parts[i];
-
+        for (const auto & part : parts) {
             QStandardItem* parentItem = current ? current : model->invisibleRootItem();
             bool found = false;
 
@@ -163,7 +162,7 @@ void historicalWindow::mousePressEvent(QMouseEvent *event) {
         resizeEdges = edgesAt(event->pos());
         if (resizeEdges != Qt::Edges()) {
             resizing = true;
-            dragStartPos = event->globalPos();
+            dragStartPos = event->globalPosition();
             event->accept();
         }
     }
@@ -171,20 +170,20 @@ void historicalWindow::mousePressEvent(QMouseEvent *event) {
 
 void historicalWindow::mouseMoveEvent(QMouseEvent *event) {
     if (resizing) {
-        QPoint delta = event->globalPos() - dragStartPos;
+        const QPointF delta = event->globalPosition() - dragStartPos;
         QRect geom = geometry();
 
         if (resizeEdges.testFlag(Qt::LeftEdge))
-            geom.setLeft(geom.left() + delta.x());
+            geom.setLeft(geom.left() + static_cast<int>(delta.x()));
         if (resizeEdges.testFlag(Qt::RightEdge))
-            geom.setRight(geom.right() + delta.x());
+            geom.setRight(geom.right() + static_cast<int>(delta.x()));
         if (resizeEdges.testFlag(Qt::TopEdge))
-            geom.setTop(geom.top() + delta.y());
+            geom.setTop(geom.top() + static_cast<int>(delta.y()));
         if (resizeEdges.testFlag(Qt::BottomEdge))
-            geom.setBottom(geom.bottom() + delta.y());
+            geom.setBottom(geom.bottom() + static_cast<int>(delta.y()));
 
         setGeometry(geom);
-        dragStartPos = event->globalPos();
+        dragStartPos = event->globalPosition();
     } else {
         updateCursorShape(event->pos());
     }
@@ -277,8 +276,8 @@ void historicalWindow::createSymbolClicked() const {
 void historicalWindow::importFileClicked() {
 
     if (currentFolderItem.isEmpty()) { return; }
-    
-    QString fileName = QFileDialog::getOpenFileName(
+
+    const QString fileName = QFileDialog::getOpenFileName(
         this,
         "Выберите файл для импорта",
         "",
@@ -296,16 +295,13 @@ void historicalWindow::importFileClicked() {
         return;
     }
 
-    QDataStream dataStream(&historicalData);
     QTextStream in(&file);
     in.setAutoDetectUnicode(true);
-
-    QList<historicalCSVStroke> data;
 
     while (!in.atEnd()) {
         QString line = in.readLine();
         QStringList fields;
-        historicalCSVStroke stroke;
+        historicalCSVStroke stroke{};
 
         if (!line.contains('"')) {
             fields = line.split(',');
@@ -320,8 +316,8 @@ void historicalWindow::importFileClicked() {
         QRegularExpression re("([+-])(\\d{2}):(\\d{2})");
         QRegularExpressionMatch match = re.match(offsetStr);
         if (match.hasMatch()) {
-            int hours = match.captured(2).toInt();
-            int minutes = match.captured(3).toInt();
+            const int hours = match.captured(2).toInt();
+            const int minutes = match.captured(3).toInt();
             int offsetSecs = hours * 3600 + minutes * 60;
             if (match.captured(1) == "-")
                 offsetSecs = -offsetSecs;
@@ -339,13 +335,13 @@ void historicalWindow::importFileClicked() {
 
         if (stroke.isValid()) {
 
-            data.append(stroke);
+            currentTable.append(stroke);
         }else {
             qDebug() << "Found not valid stroke or it first stroke";
         }
     }
 
-    for (historicalCSVStroke stroke : data) {
+    for (historicalCSVStroke stroke : currentTable) {
 
         historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
     }
@@ -354,6 +350,71 @@ void historicalWindow::importFileClicked() {
     historicalData.close();
 
     ui->tabWidget->setTabEnabled(1, true);
+
+    qDebug() << "Import done";
+}
+
+void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
+
+    if (arg1.isEmpty()) {
+
+        ui->folderItemsTable->setRowCount(0);
+        QDirIterator it(currentFolder, QDir::Files);
+
+        while (it.hasNext()) {
+
+            const QString path = it.next();
+            const QString fileName = path.split('/').last().split('.').first();
+
+            if (it.filePath().split('.').last() != "hd") {
+                continue;
+            }
+
+            QTableWidgetItem *item = new QTableWidgetItem(fileName);
+            item->setData(ItemDataPath, path);
+
+            const int rowCount = ui->folderItemsTable->rowCount();
+
+            ui->folderItemsTable->setRowCount(rowCount + 1);
+
+            ui->folderItemsTable->setItem(rowCount, 0, item);
+            ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+
+        }
+
+    }else {
+
+        while (ui->folderItemsTable->rowCount() > 0) {
+            ui->folderItemsTable->removeRow(0);
+        }
+
+        QDirIterator it(currentFolder, QDir::Files);
+
+        while (it.hasNext()) {
+            const QString path = it.next();
+            const QString fileName = path.split('/').last().split('.').first();
+
+            if (it.filePath().split('.').last() != "hd") {
+                continue;
+            }
+
+            if (!fileName.startsWith(arg1)) {
+                continue;
+            }
+
+            QTableWidgetItem *item = new QTableWidgetItem(fileName);
+
+            item->setData(ItemDataPath, path);
+
+            const int rowCount = ui->folderItemsTable->rowCount();
+
+            ui->folderItemsTable->setRowCount(rowCount + 1);
+
+            ui->folderItemsTable->setItem(rowCount, 0, item);
+            ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+
+        }
+    }
 }
 
 void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
@@ -389,7 +450,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
         return;
     }
 
-    ui->folderItemsTable->setRowCount(1);
+    ui->folderItemsTable->setRowCount(0);
 
     ui->createSymbolButton->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
@@ -409,7 +470,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
         item->setData(ItemDataPath, path);
 
-        int rowCount = ui->folderItemsTable->rowCount();
+        const int rowCount = ui->folderItemsTable->rowCount();
 
         ui->folderItemsTable->setRowCount(rowCount + 1);
 
@@ -447,7 +508,7 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
         ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
         ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
 
-        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, &historicalWindow::treeViewSubDirectoryCreated);
+        connect(ui->symbolsTreeView->itemDelegate(), Q_SIGNAL(&QAbstractItemDelegate::closeEditor), this, &historicalWindow::treeViewSubDirectoryCreated);
 
     } else if (selectedAction == deleteAction) {
 
@@ -507,7 +568,7 @@ void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
         ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
         ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
 
-        connect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor,
+        connect(ui->symbolsTreeView->itemDelegate(), Q_SIGNAL(&QAbstractItemDelegate::closeEditor),
             this, &historicalWindow::treeViewHeaderSubDirCreated);
     }
 }
@@ -576,6 +637,33 @@ void historicalWindow::folderItemSelected(const int currentRow, int currentColum
 
         itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
     }
+
+    QFile historicalData(currentFolderItem.split('.').first() + ".data");
+
+    if (!historicalData.open(QIODevice::ReadOnly)) {
+        qDebug() << "historicalWindow::folderItemSelected read failed: " << historicalData.errorString();
+        return;
+    }
+
+    while (!historicalData.atEnd()) {
+        historicalCSVStroke stroke{};
+        const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
+        if (bytesRead == sizeof(historicalCSVStroke)) {
+
+            if (!stroke.isValid()) {
+                qDebug() << "Found not valid stroke or it first stroke";
+                continue;
+            }
+
+            currentTable.append(stroke);
+        } else {
+
+            qWarning() << "empty file or damaged file";
+            break;
+        }
+    }
+
+    historicalData.close();
 }
 
 void historicalWindow::settingValueChanged(const int row, const int column) const {
@@ -613,7 +701,6 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
     if (!item or item->row() <= 0) return;
 
     QMenu contextMenu(this);
-
     contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     const QAction *deleteAction = contextMenu.addAction("Удалить");
@@ -632,7 +719,7 @@ void historicalWindow::tabBarClicked(int index) {
 
     if (index == 1) {
 
-        QString path = currentFolderItem.split('.').first() + ".data";
+        const QString path = currentFolderItem.split('.').first() + ".data";
 
         QFile historicalData(path);
 
@@ -641,9 +728,11 @@ void historicalWindow::tabBarClicked(int index) {
             return;
         }
 
+        QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+
         while (!historicalData.atEnd()) {
-            historicalCSVStroke stroke;
-            qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
+            historicalCSVStroke stroke{};
+            const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
             if (bytesRead == sizeof(historicalCSVStroke)) {
 
                 if (!stroke.isValid()) {
@@ -654,21 +743,137 @@ void historicalWindow::tabBarClicked(int index) {
                 const int rowCount = ui->symbolDataTableWidget->rowCount();
                 ui->symbolDataTableWidget->setRowCount(rowCount + 1);
 
-                ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString()));
+                ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
                 ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
                 ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
                 ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
                 ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
                 ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+
+                currentTable.append(stroke);
             } else {
-                qWarning() << "Неполная запись или повреждённый файл.";
+
+                qWarning() << "empty file or damaged file";
                 break;
             }
         }
 
         historicalData.close();
+
+        connect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
     }else {
 
-
+        disconnect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
     }
+}
+
+void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
+
+    const int currentColumn = ui->symbolDataTableWidget->column(item);
+    const int currentRow = ui->symbolDataTableWidget->row(item);
+
+    historicalCSVStroke stroke = currentTable[currentRow];
+
+    const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+    QDateTime date;
+    double numberDouble;
+    qlonglong numberLongLong;
+    bool numberValid;
+
+    switch (currentColumn) {
+        case 0:
+
+            date = QDateTime::fromString(ui->symbolDataTableWidget->item(currentRow, 0)->text(), dateFormat);
+
+            if (date.isValid()) {
+
+                stroke.timestamp = date.toSecsSinceEpoch();
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 0)->setText(stroke.getDate().toString(dateFormat));
+            }
+            break;
+        case 1:
+
+            numberDouble = ui->symbolDataTableWidget->item(currentRow, 1)->text().toDouble(&numberValid);
+
+            if (numberValid) {
+
+                stroke.open = numberDouble;
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 1)->setText(QString::number(stroke.open, 'g', 17));
+            }
+            break;
+        case 2:
+
+            numberDouble = ui->symbolDataTableWidget->item(currentRow, 2)->text().toDouble(&numberValid);
+            if (numberValid) {
+
+                stroke.high = numberDouble;
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 2)->setText(QString::number(stroke.high, 'g', 17));
+            }
+            break;
+        case 3:
+
+            numberDouble = ui->symbolDataTableWidget->item(currentRow, 3)->text().toDouble(&numberValid);
+
+            if (numberValid) {
+
+                stroke.low = numberDouble;
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 3)->setText(QString::number(stroke.low, 'g', 17));
+            }
+            break;
+        case 4:
+
+            numberDouble = ui->symbolDataTableWidget->item(currentRow, 4)->text().toDouble(&numberValid);
+
+            if (numberValid) {
+
+                stroke.close = numberDouble;
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 4)->setText(QString::number(stroke.close, 'g', 17));
+            }
+            break;
+        case 5:
+
+            numberLongLong = ui->symbolDataTableWidget->item(currentRow, 5)->text().toLongLong(&numberValid);
+
+            if (numberValid) {
+
+                stroke.volume = numberLongLong;
+            }else {
+
+                ui->symbolDataTableWidget->item(currentRow, 5)->setText(QString::number(stroke.volume));
+            }
+            break;
+        default:
+
+            qDebug() << "ERROR historicalWindow::currentTableDataChanged: changed not valid column or column number 6 or higher";
+    }
+
+    if (!(numberValid or date.isValid())) {
+        return;
+    }
+
+    QFile historicalData(currentFolderItem.split('.').first() + ".data");
+
+    if (!historicalData.open(QIODevice::WriteOnly)) {
+        qDebug() << "historicalWindow::currentTableDataChanged write failed: " << historicalData.errorString();
+        return;
+    }
+
+    currentTable[currentRow] = stroke;
+
+    for (historicalCSVStroke writeStroke : currentTable) {
+
+        historicalData.write(reinterpret_cast<const char*>(&writeStroke), sizeof(historicalCSVStroke));
+    }
+
+    historicalData.close();
 }

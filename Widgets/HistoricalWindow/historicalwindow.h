@@ -7,9 +7,9 @@
 
 #include <QDialog>
 #include <QDir>
-
 #include "Components/customStyledItemDelegate.h"
 
+struct historicalCSVStroke;
 class historicalWindowTable;
 class QTableWidgetItem;
 
@@ -41,6 +41,8 @@ public slots:
     void createSymbolClicked() const;
     void importFileClicked();
 
+    void searchLineEditTextChanged(const QString &arg1);
+
     void symbolNameAccepted(QTableWidgetItem* item) const;
     void treeViewItemClicked(const QModelIndex &index);
     void showTreeViewContextMenu(const QPoint &pos);
@@ -51,6 +53,8 @@ public slots:
     void settingValueChanged(int row, int column) const;
     void showFolderItemsContextMenu(const QPoint &pos);
     void tabBarClicked(int index);
+
+    void currentTableDataChanged(const QTableWidgetItem *item);
 
 private:
     Ui::historicalWindow *ui;
@@ -64,12 +68,14 @@ private:
     QString currentFolder = "";
     QString currentFolderItem = "";
 
+    QList<historicalCSVStroke> currentTable;
+
     const int RESIZE_MARGIN = 5;
     bool resizing = false;
-    QPoint dragStartPos;
+    QPointF dragStartPos;
     Qt::Edges resizeEdges;
 
-    Qt::Edges edgesAt(const QPoint &pos) const;
+    [[nodiscard]] Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);
 
     void updateTreeViewItemIcon(const QModelIndex& index) const;

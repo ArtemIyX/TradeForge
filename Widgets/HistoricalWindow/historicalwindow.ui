@@ -278,7 +278,7 @@ QTreeView::branch:open:has-children {
                   <number>10</number>
                  </property>
                  <item>
-                  <widget class="QLineEdit" name="lineEdit">
+                  <widget class="QLineEdit" name="searchSymbolLineEdit">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -287,7 +287,7 @@ QTreeView::branch:open:has-children {
                    </property>
                    <property name="minimumSize">
                     <size>
-                     <width>0</width>
+                     <width>200</width>
                      <height>25</height>
                     </size>
                    </property>
@@ -379,7 +379,7 @@ QTableView::item:selected:!active {
                  </item>
                 </layout>
                 <zorder>folderItemsTable</zorder>
-                <zorder>lineEdit</zorder>
+                <zorder>searchSymbolLineEdit</zorder>
                 <zorder>itemSettingsName</zorder>
                </widget>
               </item>
