@@ -34,11 +34,14 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
     connect(ui->importButton, SIGNAL(clicked()), this, SLOT(importFileClicked()));
+    connect(ui->exportButton, SIGNAL(clicked()), this, SLOT(exportFileClicked()));
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
+    ui->searchSymbolLineEdit->setDisabled(true);
 
     ui->createSymbolButton->setDisabled(true);
     ui->importButton->setDisabled(true);
+    ui->exportButton->setDisabled(true);
 
     itemSettingsTable = new historicalWindowTable(this);
 
@@ -308,23 +311,7 @@ void historicalWindow::importFileClicked() {
         }
 
         QString dateTimeStr = fields[0].left(19);  // "2025-06-23 00:00:00"
-        QString offsetStr = fields[0].mid(19);     // "-04:00"
-
         QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
-        dt.setTimeZone(QTimeZone::utc());
-
-        QRegularExpression re("([+-])(\\d{2}):(\\d{2})");
-        QRegularExpressionMatch match = re.match(offsetStr);
-        if (match.hasMatch()) {
-            const int hours = match.captured(2).toInt();
-            const int minutes = match.captured(3).toInt();
-            int offsetSecs = hours * 3600 + minutes * 60;
-            if (match.captured(1) == "-")
-                offsetSecs = -offsetSecs;
-
-            QTimeZone tz(offsetSecs);
-            dt.setTimeZone(tz);
-        }
 
         stroke.timestamp = dt.toSecsSinceEpoch();
         stroke.open = fields[1].toDouble();
@@ -354,6 +341,71 @@ void historicalWindow::importFileClicked() {
     qDebug() << "Import done";
 }
 
+void historicalWindow::exportFileClicked() {
+
+    const QString dirPath = QFileDialog::getExistingDirectory(
+        this,
+        "Выберите папку для экспорта",
+        ""
+    );
+
+    if (currentTable.isEmpty()) {
+        qDebug() << "Error exportFileClicked: No data to export";
+        return;
+    }
+
+    const QLocale locale;
+    const QChar sep = (locale.decimalPoint() == ',') ? ';' : ',';
+
+    const QString filePath = dirPath + "/" + currentFolderItem.split('/').last().split('.').first() + ".csv";
+
+    if (QFile::exists(filePath)) {
+        QFile::remove(filePath);
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qDebug() << "Error: Cannot open file" << filePath;
+        return;
+    }
+
+    QTextStream out(&file);
+    out.setEncoding(QStringConverter::Utf8);
+
+    const QStringList headers = {"Date","Open","High","Low","Close","Volume"};
+    out << headers.join(sep) << "\n";
+
+    for (historicalCSVStroke stroke : currentTable) {
+        QStringList rowData;
+        QDateTime dateTime = stroke.getDate();
+
+        if (!dateTime.isValid()) {
+            qDebug() << "Invalid QDateTime for stroke, setting to current date with 12:00:00";
+            dateTime = QDateTime(QDate::currentDate(), QTime(12, 0, 0));
+        } else {
+            QTime time = dateTime.time();
+            if (time == QTime(0, 0, 0)) {
+                qDebug() << "No time specified for" << dateTime.toString() << ", setting to 12:00:00";
+                dateTime.setTime(QTime(12, 0, 0));
+            } else {
+                qDebug() << "Time already specified:" << time.toString("HH:mm:ss");
+            }
+        }
+
+        rowData << dateTime.toString("yyyy-MM-dd HH:mm:ss");
+        rowData << QString::number(stroke.open, 'g', 17);
+        rowData << QString::number(stroke.high, 'g', 17);
+        rowData << QString::number(stroke.low, 'g', 17);
+        rowData << QString::number(stroke.close, 'g', 17);
+        rowData << QString::number(stroke.volume);
+
+        out << rowData.join(sep) << "\n";
+    }
+
+    file.close();
+    qDebug() << "Data successfully exported to" << filePath << "with separator" << sep;
+}
+
 void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
 
     if (arg1.isEmpty()) {
@@ -381,7 +433,6 @@ void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
             ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
 
         }
-
     }else {
 
         while (ui->folderItemsTable->rowCount() > 0) {
@@ -453,6 +504,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
     ui->folderItemsTable->setRowCount(0);
 
     ui->createSymbolButton->setDisabled(false);
+    ui->searchSymbolLineEdit->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
 
     QDirIterator it(currentFolder, QDir::Files);
@@ -597,6 +649,7 @@ void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractIte
 void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
     ui->importButton->setDisabled(false);
+    ui->exportButton->setDisabled(false);
     if (!ui->folderItemsTable->item(currentRow, 0)) {
         qDebug() << "historicalWindow::folderItemSelected: cell in row " << currentRow << " not valid maybe click on table without selected folder";
         return;

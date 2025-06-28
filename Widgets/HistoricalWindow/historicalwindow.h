@@ -40,6 +40,7 @@ public slots:
 
     void createSymbolClicked() const;
     void importFileClicked();
+    void exportFileClicked();
 
     void searchLineEditTextChanged(const QString &arg1);
 
