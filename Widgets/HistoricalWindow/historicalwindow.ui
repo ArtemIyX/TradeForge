@@ -144,7 +144,7 @@ QTabBar::tab:disabled {
 }</string>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="specificationTab">
            <property name="styleSheet">
@@ -465,66 +465,6 @@ QTableView::item:selected:!active {
         <number>5</number>
        </property>
        <item>
-        <widget class="QPushButton" name="importButton">
-         <property name="styleSheet">
-          <string notr="true">QPushButton{
-	color: #fff;
-	border: 1px solid rgb(102, 102, 102);
-	background-color: rgb(58, 58, 58);
-	padding: 3px 2px;
-}
-QPushButton::hover{
-    color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}
-QPushButton::pressed {
-	background-color: #ffffff;
-	padding: 3px 2px;
-}
-
-QPushButton::disabled{
-	color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}</string>
-         </property>
-         <property name="text">
-          <string>Import csv</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="exportButton">
-         <property name="styleSheet">
-          <string notr="true">QPushButton{
-	color: #fff;
-	border: 1px solid rgb(102, 102, 102);
-	background-color: rgb(58, 58, 58);
-	padding: 3px 2px;
-}
-QPushButton::hover{
-    color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}
-QPushButton::pressed {
-	background-color: #ffffff;
-	padding: 3px 2px;
-}
-
-QPushButton::disabled{
-	color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}</string>
-         </property>
-         <property name="text">
-          <string>Export csv</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QPushButton" name="createSymbolButton">
          <property name="styleSheet">
           <string notr="true">QPushButton{
@@ -567,36 +507,6 @@ QPushButton::pressed {
           </size>
          </property>
         </spacer>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton_2">
-         <property name="styleSheet">
-          <string notr="true">QPushButton{
-	color: #fff;
-	border: 1px solid rgb(102, 102, 102);
-	background-color: rgb(58, 58, 58);
-	padding: 3px 2px;
-}
-QPushButton::hover{
-    color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}
-QPushButton::pressed {
-	background-color: #ffffff;
-	padding: 3px 2px;
-}
-
-QPushButton::disabled{
-	color: #CCCCCC;
-	background-color: #666666;
-	padding: 3px 2px;
-}</string>
-         </property>
-         <property name="text">
-          <string>Ok</string>
-         </property>
-        </widget>
        </item>
       </layout>
      </item>

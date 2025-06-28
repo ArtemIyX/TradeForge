@@ -13,7 +13,6 @@
 #include <QtCharts>
 #include <QFileDialog>
 #include <QMouseEvent>
-
 #include "../CandleCharts/candleChartView.h"
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
@@ -31,15 +30,11 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->titleBarWidget->layout()->addWidget(titleBar);
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
-    connect(ui->importButton, SIGNAL(clicked()), this, SLOT(importFileClicked()));
-    connect(ui->exportButton, SIGNAL(clicked()), this, SLOT(exportFileClicked()));
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
     ui->searchSymbolLineEdit->setDisabled(true);
 
     ui->createSymbolButton->setDisabled(true);
-    ui->importButton->setDisabled(true);
-    ui->exportButton->setDisabled(true);
 
     itemSettingsTable = new historicalWindowTable(this);
 
@@ -653,8 +648,6 @@ void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractIte
 
 void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
-    ui->importButton->setDisabled(false);
-    ui->exportButton->setDisabled(false);
     if (!ui->folderItemsTable->item(currentRow, 0)) {
         qDebug() << "historicalWindow::folderItemSelected: cell in row " << currentRow << " not valid maybe click on table without selected folder";
         return;
@@ -758,13 +751,18 @@ void historicalWindow::settingValueChanged(const int row, const int column) cons
 void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
     const QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
-    if (!item or item->row() <= 0) return;
+    if (!item) return;
 
     QMenu contextMenu(this);
     contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
-    const QAction *deleteAction = contextMenu.addAction("Удалить");
+    const QAction *importCSVAction = contextMenu.addAction("Import csv");
+    const QAction *exportCSVAction = contextMenu.addAction("Export csv");
+    const QAction *deleteCSVAction = contextMenu.addAction("Delete csv");
+    const QAction *deleteAction = contextMenu.addAction("Delete");
     const QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
+
+    currentFolderItem = item->data(ItemDataPath).toString();
 
     if (selectedAction == deleteAction) {
 
@@ -772,6 +770,18 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         QFile::remove(pathToData);
 
         ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
+    } else if (selectedAction == importCSVAction) {
+
+        importFileClicked();
+    } else if (selectedAction == exportCSVAction) {
+
+        exportFileClicked();
+    } else if (selectedAction == deleteCSVAction) {
+
+        if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {
+
+            QFile::remove(currentFolderItem.split('.').first() + ".data");
+        }
     }
 }
 
