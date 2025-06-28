@@ -9,6 +9,7 @@
 #include <QDir>
 #include "Components/customStyledItemDelegate.h"
 
+class QChartView;
 struct historicalCSVStroke;
 class historicalWindowTable;
 class QTableWidgetItem;
@@ -75,6 +76,8 @@ private:
     bool resizing = false;
     QPointF dragStartPos;
     Qt::Edges resizeEdges;
+
+    QChartView *chartView;
 
     [[nodiscard]] Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);

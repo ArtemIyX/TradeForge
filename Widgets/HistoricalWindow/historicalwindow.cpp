@@ -6,17 +6,15 @@
 
 #include "historicalwindow.h"
 #include "ui_historicalWindow.h"
-#include <QStandardItemModel>
 #include <QFile>
 #include <QDir>
 #include "Components/customStyledItemDelegate.h"
-#include <QDirIterator>
 #include <qmenu.h>
-#include <QTreeWidget>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include <QtCharts>
 #include <QFileDialog>
 #include <QMouseEvent>
+
+#include "../CandleCharts/candleChartView.h"
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
@@ -113,6 +111,13 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->symbolDataTableWidget->setHorizontalHeaderLabels({"Date","Open","High","Low","Close","Volume" });
 
     connect(ui->tabWidget, Q_SIGNAL(&QTabWidget::tabBarClicked), this, &historicalWindow::tabBarClicked);
+
+    chartView = new candleChartView();
+    chartView->setRenderHint(QPainter::Antialiasing);
+
+
+    ui->currentCSVTable->setLayout(new QVBoxLayout());
+    ui->currentCSVTable->layout()->addWidget(chartView);
 }
 
 historicalWindow::~historicalWindow() {
@@ -659,9 +664,11 @@ void historicalWindow::folderItemSelected(const int currentRow, int currentColum
     if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {
 
         ui->tabWidget->setTabEnabled(1, true);
+        ui->tabWidget->setTabEnabled(2, true);
     }else {
 
         ui->tabWidget->setTabEnabled(1, false);
+        ui->tabWidget->setTabEnabled(2, false);
     }
 
     QFile file(currentFolderItem);
@@ -814,9 +821,80 @@ void historicalWindow::tabBarClicked(int index) {
         historicalData.close();
 
         connect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
-    }else {
+    }else if (index == 0) {
 
         disconnect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
+    }else if (index == 2) {
+
+        chartView->chart()->deleteLater();
+
+        QCandlestickSeries *series = new QCandlestickSeries();
+
+        series->setIncreasingColor(QColor("#2ecc71"));
+        series->setDecreasingColor(QColor("#e74c3c"));
+        series->setBodyOutlineVisible(false);
+        series->setMaximumColumnWidth(5);
+        series->setMinimumColumnWidth(1.5);
+
+        for (const historicalCSVStroke stroke : currentTable) {
+
+            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp);
+            if (stroke.close >= stroke.open) {
+                set->setPen(QPen(QColor("#2ecc71"), 0.8));
+            } else {
+                set->setPen(QPen(QColor("#e74c3c"), 0.8));
+            }
+            series->append(set);
+        }
+
+        QChart *chart = new QChart();
+        chart->addSeries(series);
+        chart->setTitle("Candlestick");
+
+        auto *axisX = new QDateTimeAxis;
+        axisX->setFormat("dd.MM.yyyy");
+        axisX->setTitleText("Date");
+        chart->addAxis(axisX, Qt::AlignBottom);
+        series->attachAxis(axisX);
+
+        qint64 minTimestamp = currentTable.front().timestamp;
+        qint64 maxTimestamp = currentTable.back().timestamp;
+        axisX->setMin(QDateTime::fromMSecsSinceEpoch(minTimestamp));
+        axisX->setMax(QDateTime::fromMSecsSinceEpoch(maxTimestamp));
+
+        axisX->setTickCount(10);
+
+        auto *axisY = new QValueAxis;
+        axisY->setLabelFormat("%.2f");
+        axisY->setTitleText("Price");
+        chart->addAxis(axisY, Qt::AlignLeft);
+        series->attachAxis(axisY);
+
+        chart->setBackgroundBrush(QBrush(QColor("#252525")));
+        chart->setTitleBrush(QBrush(Qt::white));
+
+        axisX->setTitleBrush(QBrush(Qt::white));
+        axisX->setLabelsColor(Qt::white);
+
+        axisY->setTitleBrush(QBrush(Qt::white));
+        axisY->setLabelsColor(Qt::white);
+
+        series->setUseOpenGL(true);
+        chartView->setChart(chart);
+
+        chartView->setDragMode(QGraphicsView::NoDrag);
+        chartView->setInteractive(true);
+
+        connect(axisX, &QDateTimeAxis::rangeChanged, this, [=](const QDateTime &min, const QDateTime &max) {
+            qint64 rangeMs = min.msecsTo(max);
+            int candleCount = series->sets().size();
+            qreal width = 0.8 / (candleCount / (rangeMs / 86400000.0));
+            series->setBodyWidth(qMax(0.1, qMin(0.8, width)));
+        });
+
+        chartView->setRenderHint(QPainter::Antialiasing);
+        chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState | QGraphicsView::DontAdjustForAntialiasing);
+        chartView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     }
 }
 

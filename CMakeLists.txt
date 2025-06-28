@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Charts)
 
 qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         main.cpp
@@ -26,12 +26,15 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/HistoricalWindow/Data/SymbolStructs.cuh
         Widgets/TitleBar/customTitleBar.cpp
         Widgets/TitleBar/customTitleBar.h
+        Widgets/CandleCharts/candleChartView.cpp
+        Widgets/CandleCharts/candleChartView.h
 )
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         Qt::Core
         Qt::Widgets
+        Qt::Charts
 )
 
 include(GNUInstallDirs)
