@@ -3,12 +3,19 @@
 //
 
 #include "historicaldataManager.h"
-#include <QApplication>
 #include <QFile>
 #include <QDirIterator>
 #include <QFileDialog>
 #include <QTextStream>
+#include <QDebug>
+#include <QNetworkReply>
+#include <QNetworkCookie>
+#include <QNetworkCookieJar>
+#include <QDateTime>
 #include <QTableWidget>
+#include <QApplication>
+#include <QMessageBox>
+#include <qprocess.h>
 
 dataManager* dataManager::m_instance = nullptr;
 
@@ -19,12 +26,15 @@ dataManager* dataManager::instance() {
     return m_instance;
 }
 
-dataManager::dataManager(QObject* parent) : QObject(parent), treeModel(new QStandardItemModel(this)) {
+dataManager::dataManager(QObject* parent) : QObject(parent), treeModel(new QStandardItemModel(this)), networkManager(new QNetworkAccessManager(this)),
+      cookieJar(new QNetworkCookieJar(this)) {
     treeModel->setHorizontalHeaderLabels({"Tree view"});
 }
 
 dataManager::~dataManager() {
     delete treeModel;
+    delete networkManager;
+    delete cookieJar;
 }
 
 void dataManager::initialize(const QString& dataFolderPath) {
@@ -303,6 +313,79 @@ void dataManager::importFiles(const QList<QString>& files, const QString &import
     }
 }
 
+bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &startDate, const QDate &endDate,
+    const QString &outputFilePath) {
+    if (!startDate.isValid() || !endDate.isValid() || startDate > endDate) {
+        qDebug() << "Invalid date range:" << startDate << "to" << endDate;
+        emit yahooDataDownloaded(outputFilePath, false);
+        return false;
+    }
+
+    QProcess pythonCheck;
+    pythonCheck.start("python", {"--version"});
+    pythonCheck.waitForFinished(3000); // Wait 3 seconds
+    if (pythonCheck.exitCode() != 0) {
+        qDebug() << "Python not found:" << QString(pythonCheck.readAllStandardError());
+        QMessageBox::warning(nullptr, "Python Required",
+                             "Python is not installed. Please install Python 3.6+ and ensure 'python' is in your PATH.\n"
+                             "Alternatively, download the CSV manually from https://finance.yahoo.com/quote/" + symbol + "/history "
+                             "and import it using the 'Import CSV' option.");
+        emit yahooDataDownloaded(outputFilePath, false);
+        return false;
+    }
+
+    QString scriptPath = QDir(QDir::currentPath()).filePath("Utils/YahooDownloader.py");
+
+    QProcess process;
+    QStringList arguments = {
+        scriptPath,
+        symbol,
+        startDate.toString("yyyy-MM-dd"),
+        endDate.toString("yyyy-MM-dd"),
+        outputFilePath
+    };
+
+    process.start("python", arguments);
+    process.waitForFinished(-1); // Wait indefinitely for completion
+
+    bool success = (process.exitCode() == 0);
+    if (!success) {
+        qDebug() << "Python script failed with exit code:" << process.exitCode();
+        qDebug() << "Standard output:" << QString(process.readAllStandardOutput());
+        qDebug() << "Error output:" << QString(process.readAllStandardError());
+    } else {
+        qDebug() << "Python script completed successfully";
+    }
+
+    QString safeOutputFilePath = outputFilePath;
+    QString symbolPath = QFileInfo(outputFilePath).absolutePath() + "/" + QFileInfo(outputFilePath).fileName().split('.').first() + ".hd";
+
+    if (!importCSV(symbolPath, safeOutputFilePath)) {
+        qDebug() << "Failed to import CSV:" << safeOutputFilePath << "to" << symbolPath;
+        QMessageBox::warning(nullptr, "Import Error",
+                             "Failed to import CSV data to: " + symbolPath + ".\n"
+                             "Please check the CSV file and try again.");
+        emit yahooDataDownloaded(safeOutputFilePath, false);
+        return false;
+    }
+
+    QFile csvFile(safeOutputFilePath);
+    if (csvFile.exists()) {
+        if (!csvFile.remove()) {
+            qDebug() << "Failed to delete CSV file:" << safeOutputFilePath;
+            QMessageBox::warning(nullptr, "Deletion Error",
+                                 "Failed to delete temporary CSV file: " + safeOutputFilePath + ".\n"
+                                 "Please delete it manually.");
+            emit yahooDataDownloaded(safeOutputFilePath, false);
+            return false;
+        }
+        qDebug() << "Deleted temporary CSV file:" << safeOutputFilePath;
+    }
+
+    emit yahooDataDownloaded(safeOutputFilePath, true);
+    return true;
+}
+
 QStandardItemModel* dataManager::getTreeModel() const {
     return treeModel;
 }
@@ -411,4 +494,76 @@ void dataManager::updateTreeViewItemIcon(const QModelIndex& index) const {
     } else {
         item->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
     }
+}
+
+void dataManager::fetchYahooCrumbAndCookie(const QString &symbol, const QString &outputFilePath, const QDate &startDate,
+    const QDate &endDate) {
+    QString quoteUrl = QString("https://finance.yahoo.com/quote/%1").arg(symbol);
+    QNetworkRequest request((QUrl(quoteUrl)));
+    request.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+
+    QNetworkReply* reply = networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        bool success = false;
+        if (reply->error() == QNetworkReply::NoError) {
+            QString response = QString::fromUtf8(reply->readAll());
+            // Extract crumb from response (typically in a script tag)
+            QRegularExpression crumbRegex("\"CrumbStore\":\\{\"crumb\":\"([^\"]+)\"\\}");
+            QRegularExpressionMatch match = crumbRegex.match(response);
+            if (match.hasMatch()) {
+                crumb = match.captured(1);
+                qDebug() << "Crumb retrieved:" << crumb;
+
+                // Cookie is automatically stored in cookieJar
+                QList<QNetworkCookie> cookies = cookieJar->cookiesForUrl(QUrl(quoteUrl));
+                if (!cookies.isEmpty()) {
+                    // Proceed to download CSV
+                    QDateTime startDateTime;
+                    startDateTime.setDate(startDate);
+                    QDateTime endDateTime;
+                    endDateTime.setDate(endDate.addDays(1));
+                    qint64 period1 = startDateTime.toSecsSinceEpoch();
+                    qint64 period2 = endDateTime.toSecsSinceEpoch();
+
+                    QString downloadUrl = QString("https://query1.finance.yahoo.com/v7/finance/download/%1?period1=%2&period2=%3&interval=1d&events=history&crumb=%4")
+                                             .arg(symbol, QString::number(period1), QString::number(period2), QUrl::toPercentEncoding(crumb));
+
+                    QNetworkRequest downloadRequest;
+                    downloadRequest.setUrl(QUrl(downloadUrl));
+                    downloadRequest.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+
+                    QNetworkReply* downloadReply = networkManager->get(downloadRequest);
+                    connect(downloadReply, &QNetworkReply::finished, this, [=]() {
+                        bool downloadSuccess = false;
+                        if (downloadReply->error() == QNetworkReply::NoError) {
+                            QFile file(outputFilePath);
+                            if (file.open(QIODevice::WriteOnly)) {
+                                file.write(downloadReply->readAll());
+                                file.close();
+                                qDebug() << "Data successfully saved to" << outputFilePath;
+                                downloadSuccess = true;
+                            } else {
+                                qDebug() << "Failed to open file for writing:" << outputFilePath;
+                            }
+                        } else {
+                            qDebug() << "Download error:" << downloadReply->errorString();
+                        }
+                        emit yahooDataDownloaded(outputFilePath, downloadSuccess);
+                        downloadReply->deleteLater();
+                    });
+                    success = true;
+                } else {
+                    qDebug() << "No cookies retrieved for URL:" << quoteUrl;
+                }
+            } else {
+                qDebug() << "Failed to extract crumb from response";
+            }
+        } else {
+            qDebug() << "Crumb fetch error:" << reply->errorString();
+        }
+        if (!success) {
+            emit yahooDataDownloaded(outputFilePath, false);
+        }
+        reply->deleteLater();
+    });
 }

@@ -7,8 +7,10 @@
 
 #include <QStandardItemModel>
 #include <QDir>
+#include <QNetworkCookieJar>
 #include "SymbolStructs.cuh"
 
+class QNetworkAccessManager;
 class QTableWidget;
 struct historicalCSVStroke;
 class QTableWidgetItem;
@@ -33,6 +35,7 @@ public:
     bool exportCSV(const QString& symbolPath, const QString& exportDir);
     bool deleteHistoricalData(const QString& symbolPath);
     void importFiles(const QList<QString>& files, const QString &importPath, const QList<symbolSettings>& filesSettings);
+    bool downloadYahooFinanceData(const QString& symbol, const QDate& startDate, const QDate& endDate, const QString& outputFilePath);
 
     // Data access
     QStandardItemModel* getTreeModel() const;
@@ -47,6 +50,7 @@ signals:
     void treeModelUpdated();
     void symbolSettingsUpdated(const QString& symbolPath);
     void historicalDataUpdated(const QString& symbolPath);
+    void yahooDataDownloaded(const QString& outputFilePath, bool success);
 
 private:
     explicit dataManager(QObject* parent = nullptr);
@@ -57,9 +61,13 @@ private:
 
     void loadTreeViewItems();
     void updateTreeViewItemIcon(const QModelIndex& index) const;
+    void fetchYahooCrumbAndCookie(const QString& symbol, const QString& outputFilePath, const QDate& startDate, const QDate& endDate);
 
     QString dataFolder;
     QStandardItemModel* treeModel;
+    QNetworkAccessManager* networkManager;
+    QNetworkCookieJar* cookieJar;
+    QString crumb;
 
     static dataManager* m_instance;
 };

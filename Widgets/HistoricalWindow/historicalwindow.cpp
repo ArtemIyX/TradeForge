@@ -19,6 +19,7 @@
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
 #include "Data/SymbolStructs.cuh"
+#include "DownloadCSVWindow/downloadcsvwindow.h"
 #include "ImportFilesDialog/importfileswindow.h"
 
 historicalWindow::historicalWindow(QWidget *parent) :
@@ -778,6 +779,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
     const QAction *importCSVAction = contextMenu.addAction("Import csv");
     const QAction *exportCSVAction = contextMenu.addAction("Export csv");
     const QAction *deleteCSVAction = contextMenu.addAction("Delete csv");
+    const QAction *downloadCSVAction = contextMenu.addAction("Download csv");
     const QAction *deleteAction = contextMenu.addAction("Delete");
     const QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
 
@@ -801,6 +803,10 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
             QFile::remove(currentFolderItem.split('.').first() + ".data");
         }
+    } else if (selectedAction == downloadCSVAction) {
+        downloadCSVWindow* downloadWindow = new downloadCSVWindow(currentFolderItem.split('.').first() + ".csv");
+        downloadWindow->show();
+        downloadWindow->setModal(true);
     }
 }
 
