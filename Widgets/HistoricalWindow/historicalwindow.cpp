@@ -14,14 +14,17 @@
 #include <QFileDialog>
 #include <QMouseEvent>
 #include "../CandleCharts/candleChartView.h"
+#include "../Subsystems/historicaldataManager.h"
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
 #include "CustomTable/historicatlWindowTable.h"
 #include "Data/SymbolStructs.cuh"
+#include "ImportFilesDialog/importfileswindow.h"
 
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
+    historicalDataManager = dataManager::instance();
 
     setMouseTracking(true);
     setWindowFlags(Qt::FramelessWindowHint);
@@ -30,11 +33,13 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->titleBarWidget->layout()->addWidget(titleBar);
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
+    connect(ui->importFilesButton, Q_SIGNAL(QPushButton::clicked), this, &historicalWindow::importFilesClicked);
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
     ui->searchSymbolLineEdit->setDisabled(true);
 
     ui->createSymbolButton->setDisabled(true);
+    ui->importFilesButton->setDisabled(true);
 
     itemSettingsTable = new historicalWindowTable(this);
 
@@ -42,7 +47,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     ui->selectedFolderItemsWidget->layout()->addWidget(itemSettingsTable);
 
-    model = new QStandardItemModel(this);
+    model = dataManager::instance()->getTreeModel();
     model->setHorizontalHeaderLabels({"Tree view"});
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -406,6 +411,19 @@ void historicalWindow::exportFileClicked() {
     qDebug() << "Data successfully exported to" << filePath << "with separator" << sep;
 }
 
+void historicalWindow::importFilesClicked(bool checked) {
+
+    if (!importFiles) {
+
+        importFiles = new importFilesWIndow();
+        importFiles->currentFolder = currentFolder;
+        importFiles->setModal(true);
+        importFiles->show();
+    }else {
+
+    }
+}
+
 void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
 
     if (arg1.isEmpty()) {
@@ -505,6 +523,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
     ui->createSymbolButton->setDisabled(false);
     ui->searchSymbolLineEdit->setDisabled(false);
+    ui->importFilesButton->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
 
     QDirIterator it(currentFolder, QDir::Files);

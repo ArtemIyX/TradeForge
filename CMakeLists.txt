@@ -28,6 +28,14 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/TitleBar/customTitleBar.h
         Widgets/CandleCharts/candleChartView.cpp
         Widgets/CandleCharts/candleChartView.h
+        Widgets/Subsystems/historicalDataManager.cpp
+        Widgets/Subsystems/historicalDataManager.h
+        Widgets/HistoricalWindow/ImportFilesDialog/importfileswindow.cpp
+        Widgets/HistoricalWindow/ImportFilesDialog/importfileswindow.h
+        Widgets/HistoricalWindow/ImportFilesDialog/importfileswindow.ui
+        Widgets/HistoricalWindow/ImportFilesDialog/filetoimport.cpp
+        Widgets/HistoricalWindow/ImportFilesDialog/filetoimport.h
+        Widgets/HistoricalWindow/ImportFilesDialog/filetoimport.ui
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -35,6 +43,11 @@ target_link_libraries(${PROJECT_NAME}
         Qt::Core
         Qt::Widgets
         Qt::Charts
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/HistoricalWindow/Data
+        ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/Components
 )
 
 include(GNUInstallDirs)

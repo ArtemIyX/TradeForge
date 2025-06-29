@@ -21,5 +21,7 @@ private:
     Ui::MainWindow *ui;
 
     QDialog *historicalMenuWidget = nullptr;
+
+    QList<QObject*> subsystems = {};
 };
 #endif // MAINWINDOW_H

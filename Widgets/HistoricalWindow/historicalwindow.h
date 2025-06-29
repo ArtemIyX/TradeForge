@@ -7,8 +7,12 @@
 
 #include <QDialog>
 #include <QDir>
+#include <qpointer.h>
+
 #include "Components/customStyledItemDelegate.h"
 
+class importFilesWIndow;
+class dataManager;
 class QChartView;
 struct historicalCSVStroke;
 class historicalWindowTable;
@@ -42,6 +46,7 @@ public slots:
     void createSymbolClicked() const;
     void importFileClicked();
     void exportFileClicked();
+    void importFilesClicked(bool checked);
 
     void searchLineEditTextChanged(const QString &arg1);
 
@@ -60,8 +65,10 @@ public slots:
 
 private:
     Ui::historicalWindow *ui;
+    dataManager* historicalDataManager = nullptr;
 
     historicalWindowTable *itemSettingsTable;
+    QPointer<importFilesWIndow> importFiles;
 
     QString dataFolder = QDir::current().path() + "/data";
 
