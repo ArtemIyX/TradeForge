@@ -54,6 +54,7 @@ target_link_libraries(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/HistoricalWindow/Data
         ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/Components
+        ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/TitleBar
 )
 
 include(GNUInstallDirs)

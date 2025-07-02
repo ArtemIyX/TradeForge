@@ -26,22 +26,17 @@
 historicalWindow::historicalWindow(QWidget *parent) :
     QDialog(parent), ui(new Ui::historicalWindow) {
     ui->setupUi(this);
-    historicalDataManager = dataManager::instance();
 
-    setMouseTracking(true);
     setWindowFlags(Qt::FramelessWindowHint);
-
     QWidget* titleBar = new customTitleBar(this);
     ui->titleBarWidget->layout()->addWidget(titleBar);
+
+    historicalDataManager = dataManager::instance();
 
     connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
     connect(ui->importFilesButton, Q_SIGNAL(QPushButton::clicked), this, &historicalWindow::importFilesClicked);
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
-    ui->searchSymbolLineEdit->setDisabled(true);
-
-    ui->createSymbolButton->setDisabled(true);
-    ui->importFilesButton->setDisabled(true);
 
     itemSettingsTable = new historicalWindowTable(this);
     folderItemsTable = new historicalWindowTable(this);
@@ -92,10 +87,8 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->tabWidget->setTabEnabled(2, false);
 
     ui->symbolsTreeView->setModel(model);
-    ui->symbolsTreeView->setEnabled(true);
     ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
 
-    ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->symbolsTreeView->header(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
             this, &historicalWindow::showTreeViewHeaderContext);
 
@@ -118,7 +111,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     });
 
     itemSettingsTable->setColumnCount(2);
-    itemSettingsTable->setRowCount(10);
+    itemSettingsTable->setRowCount(0);
     itemSettingsTable->setHorizontalHeaderLabels({""});
     itemSettingsTable->verticalHeader()->setVisible(false);
     itemSettingsTable->horizontalHeader()->setVisible(false);
@@ -147,9 +140,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
 
-    ui->symbolDataTableWidget->setColumnCount(6);
     ui->symbolDataTableWidget->resizeColumnsToContents();
-    ui->symbolDataTableWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->symbolDataTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->symbolDataTableWidget->setHorizontalHeaderLabels({"Date","Open","High","Low","Close","Volume" });
 

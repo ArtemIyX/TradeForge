@@ -5,6 +5,8 @@
 // You may need to build the project (run Qt uic code generator) to get "ui_downloadCSVWindow.h" resolved
 
 #include "downloadcsvwindow.h"
+
+#include "customTitleBar.h"
 #include "ui_downloadCSVWindow.h"
 #include "../../Subsystems/historicaldataManager.h"
 
@@ -12,6 +14,10 @@
 downloadCSVWindow::downloadCSVWindow(QString Path, QWidget *parent) :
     QDialog(parent), ui(new Ui::downloadCSVWindow) {
     ui->setupUi(this);
+
+    setWindowFlags(Qt::FramelessWindowHint);
+    QWidget* titleBar = new customTitleBar(this);
+    ui->titleBarWidget->layout()->addWidget(titleBar);
 
     symbolPath = Path;
 

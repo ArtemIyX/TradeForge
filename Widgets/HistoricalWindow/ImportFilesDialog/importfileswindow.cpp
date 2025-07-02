@@ -7,16 +7,19 @@
 #include "importfileswindow.h"
 
 #include <QFileDialog>
-
 #include "filetoimport.h"
 #include "SymbolStructs.cuh"
 #include "ui_importFilesWIndow.h"
 #include "../../Subsystems/historicalDataManager.h"
-
+#include "customTitleBar.h"
 
 importFilesWIndow::importFilesWIndow(QWidget *parent) :
     QDialog(parent), ui(new Ui::importFilesWIndow) {
     ui->setupUi(this);
+
+    setWindowFlags(Qt::FramelessWindowHint);
+    QWidget* titleBar = new customTitleBar(this);
+    ui->titleBarWidget->layout()->addWidget(titleBar);
 
     connect(ui->addFilesToImportButton, Q_SIGNAL(&QPushButton::clicked), this, &importFilesWIndow::addFilesToImport);
     connect(ui->startImportButton, Q_SIGNAL(&QPushButton::clicked), this, &importFilesWIndow::startImport);

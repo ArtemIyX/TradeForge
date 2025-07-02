@@ -10,6 +10,9 @@
     <height>578</height>
    </rect>
   </property>
+  <property name="mouseTracking">
+   <bool>true</bool>
+  </property>
   <property name="windowTitle">
    <string>historicalWindow</string>
   </property>
@@ -118,6 +121,9 @@
         </property>
         <item>
          <widget class="QTabWidget" name="tabWidget">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="styleSheet">
            <string notr="true">QTabWidget::pane {
         border: 1px solid rgb(43, 43, 43);
@@ -191,6 +197,9 @@ QTabBar::tab:disabled {
                </property>
                <item>
                 <widget class="QTreeView" name="symbolsTreeView">
+                 <property name="contextMenuPolicy">
+                  <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+                 </property>
                  <property name="styleSheet">
                   <string notr="true">QTreeView {
         background-color: #333333;
@@ -279,6 +288,9 @@ QTreeView::branch:open:has-children {
                  </property>
                  <item>
                   <widget class="QLineEdit" name="searchSymbolLineEdit">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -330,6 +342,9 @@ border: 1px solid #555555;</string>
            <layout class="QVBoxLayout" name="verticalLayout_7">
             <item>
              <widget class="QTableWidget" name="symbolDataTableWidget">
+              <property name="contextMenuPolicy">
+               <enum>Qt::ContextMenuPolicy::ActionsContextMenu</enum>
+              </property>
               <property name="styleSheet">
                <string notr="true">QTableWidget {
         border: 1px solid #666666;
@@ -357,18 +372,30 @@ QTableView::item:selected:!active {
     color: white;                    
 }</string>
               </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+              </property>
               <property name="rowCount">
                <number>0</number>
               </property>
               <property name="columnCount">
-               <number>0</number>
+               <number>6</number>
               </property>
+              <attribute name="horizontalHeaderCascadingSectionResizes">
+               <bool>false</bool>
+              </attribute>
               <attribute name="horizontalHeaderStretchLastSection">
                <bool>false</bool>
               </attribute>
               <attribute name="verticalHeaderVisible">
                <bool>false</bool>
               </attribute>
+              <column/>
+              <column/>
+              <column/>
+              <column/>
+              <column/>
+              <column/>
              </widget>
             </item>
            </layout>
@@ -399,6 +426,9 @@ QTableView::item:selected:!active {
        </property>
        <item>
         <widget class="QPushButton" name="createSymbolButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">QPushButton{
 	color: #fff;
@@ -430,6 +460,9 @@ QPushButton::pressed {
        </item>
        <item>
         <widget class="QPushButton" name="importFilesButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="styleSheet">
           <string notr="true">QPushButton{
 	color: #fff;
