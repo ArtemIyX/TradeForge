@@ -11,6 +11,8 @@
 
 #include "Components/customStyledItemDelegate.h"
 
+class customMessageBox;
+enum eMessageBoxType : int;
 class importFilesWIndow;
 class dataManager;
 class QChartView;
@@ -63,11 +65,17 @@ public slots:
 
     void currentTableDataChanged(const QTableWidgetItem *item);
 
+    void showMessageBox(eMessageBoxType messageBoxType);
+    void removeMessageBox();
+
 private:
     Ui::historicalWindow *ui;
     dataManager* historicalDataManager = nullptr;
+    customMessageBox* waitWindow = nullptr;
 
     historicalWindowTable *itemSettingsTable;
+    historicalWindowTable *folderItemsTable;
+
     QPointer<importFilesWIndow> importFiles;
 
     QString dataFolder = QDir::current().path() + "/data";

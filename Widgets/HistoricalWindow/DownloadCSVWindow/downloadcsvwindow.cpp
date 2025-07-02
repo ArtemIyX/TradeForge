@@ -24,6 +24,8 @@ downloadCSVWindow::~downloadCSVWindow() {
 }
 
 void downloadCSVWindow::acceptClicked(){
+
+    hide();
     dataManager::instance()->downloadYahooFinanceData(ui->symbolNameLineEdit->text(),
         ui->startDateEdit->date(), ui->endDateEdit->date(),  symbolPath);
     deleteLater();

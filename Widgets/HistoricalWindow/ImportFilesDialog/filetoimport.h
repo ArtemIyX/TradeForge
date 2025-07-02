@@ -24,6 +24,10 @@ public:
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
 
+signals:
+
+    void preDestroy(fileToImport* widget);
+
 private slots:
     void showInExplorer();
     void deleteFile();

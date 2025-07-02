@@ -24,7 +24,8 @@ importFilesWIndow::importFilesWIndow(QWidget *parent) :
 
     connect(ui->filesSettingsTable, &QTableWidget::itemChanged, this, &importFilesWIndow::settingsTableChanged);
 
-    ui->filesToImportScroll->setLayout(new QVBoxLayout());
+    filesToImportScrollLayout = new QVBoxLayout();
+    ui->filesToImportScroll->setLayout(filesToImportScrollLayout);
 
     currentFilesSettings = {{"ticker", "EURUSD"},
         {"description", "EUR/USD"},
@@ -62,26 +63,31 @@ void importFilesWIndow::addFilesToImport(bool checked) {
         "CSV таблица (*.csv*)"
     );
 
+    QLayoutItem* item = filesToImportScrollLayout->itemAt(filesToImportScrollLayout->count() - 1);
+    if (item && item->spacerItem()) {
+        delete filesToImportScrollLayout->takeAt(filesToImportScrollLayout->count() - 1);
+    }
+
     for (QString file : files) {
+
+        if (currentFiles.contains(file)) continue;
 
         fileToImport* widget = new fileToImport(file, this);
 
-        ui->filesToImportScroll->layout()->addWidget(widget);
+        filesToImportScrollLayout->addWidget(widget);
         currentFiles.append(file);
-        connect(widget, QObject::destroyed, this, &importFilesWIndow::importFileDeleted);
+        connect(widget, &fileToImport::preDestroy, this, &importFilesWIndow::importFileDeleted);
     }
 
-    qobject_cast<QVBoxLayout*>(ui->filesToImportScroll->layout())->addStretch();
+    filesToImportScrollLayout->addStretch();
 }
 
-void importFilesWIndow::importFileDeleted(QObject* object) {
-
-    const fileToImport* widget = qobject_cast<fileToImport*>(object);
+void importFilesWIndow::importFileDeleted(const fileToImport* widget) {
 
     currentFiles.removeAll(widget->filePath);
 }
 
-void importFilesWIndow::settingsTableChanged(QTableWidgetItem *item) {
+void importFilesWIndow::settingsTableChanged(const QTableWidgetItem *item) {
 
     if (item->column() == 1) {
         const int row = item->row();

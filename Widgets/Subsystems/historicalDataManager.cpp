@@ -8,12 +8,11 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QDebug>
-#include <QNetworkReply>
-#include <QNetworkCookie>
-#include <QNetworkCookieJar>
 #include <QDateTime>
 #include <QTableWidget>
 #include <QApplication>
+#include <qfuture.h>
+#include <QtConcurrent>
 #include <QMessageBox>
 #include <qprocess.h>
 
@@ -26,15 +25,12 @@ dataManager* dataManager::instance() {
     return m_instance;
 }
 
-dataManager::dataManager(QObject* parent) : QObject(parent), treeModel(new QStandardItemModel(this)), networkManager(new QNetworkAccessManager(this)),
-      cookieJar(new QNetworkCookieJar(this)) {
+dataManager::dataManager(QObject* parent) : QObject(parent), treeModel(new QStandardItemModel(this)) {
     treeModel->setHorizontalHeaderLabels({"Tree view"});
 }
 
 dataManager::~dataManager() {
     delete treeModel;
-    delete networkManager;
-    delete cookieJar;
 }
 
 void dataManager::initialize(const QString& dataFolderPath) {
@@ -182,51 +178,75 @@ bool dataManager::renameSymbol(const QString& oldPath, const QString& newName) {
 }
 
 bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePath) {
-    QFile file(csvFilePath);
-    QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
-    if (!file.exists() || !historicalData.open(QIODevice::WriteOnly)) {
-        return false;
-    }
+   QFuture<bool> future = QtConcurrent::run([=]() {
+        QFile file(csvFilePath);
+        QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
 
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    QList<historicalCSVStroke> table;
-    QTextStream in(&file);
-    in.setAutoDetectUnicode(true);
-
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList fields;
-        historicalCSVStroke stroke{};
-
-        if (!line.contains('"')) {
-            fields = line.split(',');
+        if (!file.exists() || !historicalData.open(QIODevice::WriteOnly)) {
+            return false;
         }
 
-        QString dateTimeStr = fields[0].left(19);
-        QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
-        stroke.timestamp = dt.toSecsSinceEpoch();
-        stroke.open = fields[1].toDouble();
-        stroke.high = fields[2].toDouble();
-        stroke.low = fields[3].toDouble();
-        stroke.close = fields[4].toDouble();
-        stroke.volume = fields[5].toLongLong();
-
-        if (stroke.isValid()) {
-            table.append(stroke);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return false;
         }
-    }
 
-    for (const historicalCSVStroke& stroke : table) {
-        historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
-    }
+        QMetaObject::invokeMethod(this, [=]() {
+            emit showMessageBox(startImport);
+        }, Qt::QueuedConnection);
 
-    file.close();
-    historicalData.close();
-    emit historicalDataUpdated(symbolPath);
-    return true;
+        QList<historicalCSVStroke> table;
+        QTextStream in(&file);
+        in.setAutoDetectUnicode(true);
+
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            QStringList fields;
+            historicalCSVStroke stroke{};
+
+            if (!line.contains('"')) {
+                fields = line.split(',');
+            }
+
+            if (fields.size() < 6) continue;
+
+            QString dateTimeStr = fields[0].left(19);
+            QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
+            stroke.timestamp = dt.toSecsSinceEpoch();
+            stroke.open = fields[1].toDouble();
+            stroke.high = fields[2].toDouble();
+            stroke.low = fields[3].toDouble();
+            stroke.close = fields[4].toDouble();
+            stroke.volume = fields[5].toLongLong();
+
+            if (stroke.isValid()) {
+                table.append(stroke);
+            }
+        }
+
+        for (const historicalCSVStroke& stroke : table) {
+            historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
+        }
+
+        file.close();
+        historicalData.close();
+        return true;
+    });
+
+   auto* watcher = new QFutureWatcher<bool>(this);
+   connect(watcher, &QFutureWatcher<bool>::finished, this, [=]() {
+       bool success = watcher->result();
+       watcher->deleteLater();
+
+       if (success) {
+           emit historicalDataUpdated(symbolPath);
+           emit importDone();
+       } else {
+
+       }
+   });
+   watcher->setFuture(future);
+
+   return true;
 }
 
 bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir) {
@@ -244,6 +264,8 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
+
+    emit showMessageBox(startExport);
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
@@ -267,6 +289,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
 
     file.close();
     emit historicalDataUpdated(symbolPath);
+    emit exportDone();
     return true;
 }
 
@@ -321,6 +344,8 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
         return false;
     }
 
+    emit showMessageBox(startDownload);
+
     QProcess pythonCheck;
     pythonCheck.start("python", {"--version"});
     pythonCheck.waitForFinished(3000); // Wait 3 seconds
@@ -360,14 +385,32 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
     QString safeOutputFilePath = outputFilePath;
     QString symbolPath = QFileInfo(outputFilePath).absolutePath() + "/" + QFileInfo(outputFilePath).fileName().split('.').first() + ".hd";
 
-    if (!importCSV(symbolPath, safeOutputFilePath)) {
-        qDebug() << "Failed to import CSV:" << safeOutputFilePath << "to" << symbolPath;
-        QMessageBox::warning(nullptr, "Import Error",
-                             "Failed to import CSV data to: " + symbolPath + ".\n"
-                             "Please check the CSV file and try again.");
-        emit yahooDataDownloaded(safeOutputFilePath, false);
-        return false;
+    importCSV(symbolPath, safeOutputFilePath);
+
+    connect(this, &dataManager::historicalDataUpdated, this, &dataManager::importDownloadedCSVDone);
+
+    return true;
+}
+
+QList<QString> dataManager::setCurrentFolder(const QString &folder) {
+
+    QList<QString> result;
+    currentFolder = folder;
+    QDirIterator it(currentFolder, QDir::Files);
+
+    while (it.hasNext()) {
+
+        result.append(it.next());
     }
+
+    return result;
+}
+
+void dataManager::importDownloadedCSVDone(const QString& symbolPath) {
+
+    disconnect(this, &dataManager::historicalDataUpdated, this, &dataManager::importDownloadedCSVDone);
+
+    QString safeOutputFilePath = symbolPath.split('.').first() + ".csv";
 
     QFile csvFile(safeOutputFilePath);
     if (csvFile.exists()) {
@@ -377,13 +420,12 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
                                  "Failed to delete temporary CSV file: " + safeOutputFilePath + ".\n"
                                  "Please delete it manually.");
             emit yahooDataDownloaded(safeOutputFilePath, false);
-            return false;
+            return;
         }
         qDebug() << "Deleted temporary CSV file:" << safeOutputFilePath;
     }
 
     emit yahooDataDownloaded(safeOutputFilePath, true);
-    return true;
 }
 
 QStandardItemModel* dataManager::getTreeModel() const {
@@ -454,6 +496,65 @@ void dataManager::populateSymbolDataTable(const QString& symbolPath, QTableWidge
     }
 }
 
+void dataManager::loadGraphicAsync(const QString &symbolPath) {
+
+    /*if (symbolPath != currentLoadingSymbol) {
+        bCancelAsyncLoading.store(true);
+
+        if (graphicLoader.isRunning()) {
+            graphicLoader.waitForFinished();
+        }
+
+        bCancelAsyncLoading.store(false);
+    }
+
+    if (graphicLoader.isRunning()) {
+        return;
+    }*/
+
+    currentLoadingSymbol = symbolPath;
+    graphicLoader = QtConcurrent::run([this, symbolPath]()
+    {
+        QFile historicalData(symbolPath.split('.').first() + ".data");
+
+        if (!historicalData.open(QIODevice::ReadOnly)) {
+            qDebug() << "historicalWindow::folderItemSelected read failed: " << historicalData.errorString();
+            return;
+        }
+
+        while (!historicalData.atEnd()) {
+            if (bCancelAsyncLoading.load()) {
+                qDebug() << "Task canceled for symbolPath:" << symbolPath;
+                break;
+            }
+
+            historicalCSVStroke stroke{};
+            const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
+            if (bytesRead == sizeof(historicalCSVStroke)) {
+
+                if (!stroke.isValid()) {
+                    qDebug() << "Found not valid stroke or it first stroke";
+                    continue;
+                }
+
+                currentGraphic.append(stroke);
+                QMetaObject::invokeMethod(this, [stroke, this]{
+
+                    emit strokeLoaded(stroke);
+                }, Qt::QueuedConnection);
+
+                QThread::msleep(10);
+            } else {
+
+                qWarning() << "empty file or damaged file";
+                break;
+            }
+        }
+
+    historicalData.close();
+    });
+}
+
 void dataManager::loadTreeViewItems() {
     treeModel->clear();
     treeModel->setHorizontalHeaderLabels({"Tree view"});
@@ -494,76 +595,4 @@ void dataManager::updateTreeViewItemIcon(const QModelIndex& index) const {
     } else {
         item->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
     }
-}
-
-void dataManager::fetchYahooCrumbAndCookie(const QString &symbol, const QString &outputFilePath, const QDate &startDate,
-    const QDate &endDate) {
-    QString quoteUrl = QString("https://finance.yahoo.com/quote/%1").arg(symbol);
-    QNetworkRequest request((QUrl(quoteUrl)));
-    request.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-    QNetworkReply* reply = networkManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [=]() {
-        bool success = false;
-        if (reply->error() == QNetworkReply::NoError) {
-            QString response = QString::fromUtf8(reply->readAll());
-            // Extract crumb from response (typically in a script tag)
-            QRegularExpression crumbRegex("\"CrumbStore\":\\{\"crumb\":\"([^\"]+)\"\\}");
-            QRegularExpressionMatch match = crumbRegex.match(response);
-            if (match.hasMatch()) {
-                crumb = match.captured(1);
-                qDebug() << "Crumb retrieved:" << crumb;
-
-                // Cookie is automatically stored in cookieJar
-                QList<QNetworkCookie> cookies = cookieJar->cookiesForUrl(QUrl(quoteUrl));
-                if (!cookies.isEmpty()) {
-                    // Proceed to download CSV
-                    QDateTime startDateTime;
-                    startDateTime.setDate(startDate);
-                    QDateTime endDateTime;
-                    endDateTime.setDate(endDate.addDays(1));
-                    qint64 period1 = startDateTime.toSecsSinceEpoch();
-                    qint64 period2 = endDateTime.toSecsSinceEpoch();
-
-                    QString downloadUrl = QString("https://query1.finance.yahoo.com/v7/finance/download/%1?period1=%2&period2=%3&interval=1d&events=history&crumb=%4")
-                                             .arg(symbol, QString::number(period1), QString::number(period2), QUrl::toPercentEncoding(crumb));
-
-                    QNetworkRequest downloadRequest;
-                    downloadRequest.setUrl(QUrl(downloadUrl));
-                    downloadRequest.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-
-                    QNetworkReply* downloadReply = networkManager->get(downloadRequest);
-                    connect(downloadReply, &QNetworkReply::finished, this, [=]() {
-                        bool downloadSuccess = false;
-                        if (downloadReply->error() == QNetworkReply::NoError) {
-                            QFile file(outputFilePath);
-                            if (file.open(QIODevice::WriteOnly)) {
-                                file.write(downloadReply->readAll());
-                                file.close();
-                                qDebug() << "Data successfully saved to" << outputFilePath;
-                                downloadSuccess = true;
-                            } else {
-                                qDebug() << "Failed to open file for writing:" << outputFilePath;
-                            }
-                        } else {
-                            qDebug() << "Download error:" << downloadReply->errorString();
-                        }
-                        emit yahooDataDownloaded(outputFilePath, downloadSuccess);
-                        downloadReply->deleteLater();
-                    });
-                    success = true;
-                } else {
-                    qDebug() << "No cookies retrieved for URL:" << quoteUrl;
-                }
-            } else {
-                qDebug() << "Failed to extract crumb from response";
-            }
-        } else {
-            qDebug() << "Crumb fetch error:" << reply->errorString();
-        }
-        if (!success) {
-            emit yahooDataDownloaded(outputFilePath, false);
-        }
-        reply->deleteLater();
-    });
 }

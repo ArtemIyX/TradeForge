@@ -4,6 +4,8 @@
 
 #include "historicatlWindowTable.h"
 
+#include <QLineEdit>
+
 void historicalWindowTable::commitData(QWidget *editor) {
 
     QModelIndex index = currentIndex();

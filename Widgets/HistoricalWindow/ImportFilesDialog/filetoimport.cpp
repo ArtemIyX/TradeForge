@@ -52,5 +52,6 @@ void fileToImport::showInExplorer() {
 
 void fileToImport::deleteFile() {
 
+    emit preDestroy(this);
     this->deleteLater();
 }

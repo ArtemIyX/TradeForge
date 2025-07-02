@@ -6,8 +6,11 @@
 #define IMPORTFILESWINDOW_H
 
 #include <QDialog>
+#include <QSpacerItem>
 
 
+class fileToImport;
+class QVBoxLayout;
 class QTableWidgetItem;
 struct symbolSettings;
 QT_BEGIN_NAMESPACE
@@ -29,15 +32,19 @@ public slots:
     void startImport(bool checked);
     void cancelImport(bool checked);
 
-    void importFileDeleted(QObject* object);
+    void importFileDeleted(const fileToImport* widget);
 
-    void settingsTableChanged(QTableWidgetItem *item);
+    void settingsTableChanged(const QTableWidgetItem *item);
 
 private:
     Ui::importFilesWIndow *ui;
 
     QList<symbolSettings> currentFilesSettings;
     QList<QString> currentFiles;
+
+    QVBoxLayout *filesToImportScrollLayout;
+
+    QSpacerItem *spacer;
 };
 
 

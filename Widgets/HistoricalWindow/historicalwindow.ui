@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>617</width>
-    <height>570</height>
+    <width>621</width>
+    <height>578</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -313,74 +313,7 @@ border: 1px solid #555555;</string>
                    </property>
                   </spacer>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="itemSettingsName">
-                   <property name="styleSheet">
-                    <string notr="true">border: 0px solid black;
-color: rgb(255, 255, 255);
-padding-left: 2px;</string>
-                   </property>
-                   <property name="text">
-                    <string>USA-100</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QTableWidget" name="folderItemsTable">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="styleSheet">
-                    <string notr="true">QTableWidget {
-        border: 1px solid #666666;
-        gridline-color: #555555;
-		 color: #fff;
-}
-
-QHeaderView::section {
-        background-color: #2e2e2e; 
-        color: #CCCCCC;              
-        padding: 4px;
-        border-top: none;
-        border-left: none;
-        border-right: 1px solid #555555;
-		 border-bottom: 1px solid #555555;
-}
-
-QTableView::item:selected:active {
-    background: #2e2e2e;
-    color: white;
-}
-
-QTableView::item:selected:!active {
-    background: #2e2e2e;             
-    color: white;                    
-}</string>
-                   </property>
-                   <property name="rowCount">
-                    <number>1</number>
-                   </property>
-                   <property name="columnCount">
-                    <number>2</number>
-                   </property>
-                   <attribute name="horizontalHeaderStretchLastSection">
-                    <bool>true</bool>
-                   </attribute>
-                   <attribute name="verticalHeaderVisible">
-                    <bool>false</bool>
-                   </attribute>
-                   <row/>
-                   <column/>
-                   <column/>
-                  </widget>
-                 </item>
                 </layout>
-                <zorder>folderItemsTable</zorder>
-                <zorder>searchSymbolLineEdit</zorder>
-                <zorder>itemSettingsName</zorder>
                </widget>
               </item>
              </layout>

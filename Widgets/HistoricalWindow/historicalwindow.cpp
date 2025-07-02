@@ -17,6 +17,7 @@
 #include "../Subsystems/historicaldataManager.h"
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
+#include "CustomMessageBox/custommessagebox.h"
 #include "CustomTable/historicatlWindowTable.h"
 #include "Data/SymbolStructs.cuh"
 #include "DownloadCSVWindow/downloadcsvwindow.h"
@@ -43,13 +44,48 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->importFilesButton->setDisabled(true);
 
     itemSettingsTable = new historicalWindowTable(this);
+    folderItemsTable = new historicalWindowTable(this);
 
-    itemSettingsTable->setStyleSheet(ui->folderItemsTable->styleSheet());
+    const QString tablesStyle = R"(
+        QTableWidget {
+            border: 1px solid #666666;
+            gridline-color: #555555;
+		    color: #fff;
+        }
 
+        QHeaderView::section {
+            background-color: #2e2e2e;
+            color: #CCCCCC;
+            padding: 4px;
+            border-top: none;
+            border-left: none;
+            border-right: 1px solid #555555;
+		    border-bottom: 1px solid #555555;
+        }
+
+        QTableView::item:selected:active {
+            background: #2e2e2e;
+            color: white;
+        }
+
+        QTableView::item:selected:!active {
+            background: #2e2e2e;
+            color: white;
+        }
+    )";
+
+    itemSettingsTable->setStyleSheet(tablesStyle);
+    folderItemsTable->setStyleSheet(tablesStyle);
+
+    ui->selectedFolderItemsWidget->layout()->addWidget(folderItemsTable);
     ui->selectedFolderItemsWidget->layout()->addWidget(itemSettingsTable);
 
-    model = dataManager::instance()->getTreeModel();
+    folderItemsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    model = historicalDataManager->getTreeModel();
     model->setHorizontalHeaderLabels({"Tree view"});
+
+    connect(historicalDataManager, &dataManager::showMessageBox, this, &historicalWindow::showMessageBox);
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     ui->tabWidget->setTabEnabled(1, false);
@@ -86,24 +122,30 @@ historicalWindow::historicalWindow(QWidget *parent) :
     itemSettingsTable->setHorizontalHeaderLabels({""});
     itemSettingsTable->verticalHeader()->setVisible(false);
     itemSettingsTable->horizontalHeader()->setVisible(false);
-    itemSettingsTable->horizontalHeader()->setStretchLastSection(false);
+    itemSettingsTable->horizontalHeader()->setStretchLastSection(true);
     itemSettingsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     itemSettingsTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     itemSettingsTable->setSelectionMode(QAbstractItemView::NoSelection);
+    itemSettingsTable->setItemDelegate(new tableSymbolsStyledDelegate());
 
     connect(itemSettingsTable, Q_SIGNAL(&historicalWindowTable::cellEditingFinished), this, &historicalWindow::settingValueChanged);
 
-    ui->folderItemsTable->setHorizontalHeaderLabels({"Symbol","Description" });
-    ui->folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
-    ui->folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::customContextMenuRequested),
+    folderItemsTable->setColumnCount(2);
+    folderItemsTable->setHorizontalHeaderLabels({"Symbol","Description" });
+    folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
+    folderItemsTable->verticalHeader()->setVisible(false);
+    folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    folderItemsTable->setRowCount(0);
+    folderItemsTable->horizontalHeader()->setStretchLastSection(true);
+    folderItemsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    connect(folderItemsTable, Q_SIGNAL(&QTableWidget::customContextMenuRequested),
         this, &historicalWindow::showFolderItemsContextMenu);
 
-    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::currentCellChanged), this, &historicalWindow::folderItemSelected);
+    connect(folderItemsTable, Q_SIGNAL(&QTableWidget::currentCellChanged), this, &historicalWindow::folderItemSelected);
 
     loadTreeViewItems();
 
-    connect(ui->folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
+    connect(folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
 
     ui->symbolDataTableWidget->setColumnCount(6);
     ui->symbolDataTableWidget->resizeColumnsToContents();
@@ -115,7 +157,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     chartView = new candleChartView();
     chartView->setRenderHint(QPainter::Antialiasing);
-
 
     ui->currentCSVTable->setLayout(new QVBoxLayout());
     ui->currentCSVTable->layout()->addWidget(chartView);
@@ -248,14 +289,14 @@ void historicalWindow::createSymbolClicked() const {
 
     QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
 
-    const int rowCount = ui->folderItemsTable->rowCount();
+    const int rowCount = folderItemsTable->rowCount();
 
-    ui->folderItemsTable->setRowCount(rowCount + 1);
+    folderItemsTable->setRowCount(rowCount + 1);
 
-    ui->folderItemsTable->setItem(rowCount, 0, item);
-    ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+    folderItemsTable->setItem(rowCount, 0, item);
+    folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
 
-    ui->folderItemsTable->editItem(item);
+    folderItemsTable->editItem(item);
 
     QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
 
@@ -293,58 +334,7 @@ void historicalWindow::importFileClicked() {
         "CSV таблица (*.csv*)"
     );
 
-    QFile file(fileName);
-    QFile historicalData(currentFolderItem.split('.').first() + ".data");
-
-    if (!historicalData.open(QIODevice::WriteOnly)) {
-        return;
-    }
-
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return;
-    }
-
-    QTextStream in(&file);
-    in.setAutoDetectUnicode(true);
-
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList fields;
-        historicalCSVStroke stroke{};
-
-        if (!line.contains('"')) {
-            fields = line.split(',');
-        }
-
-        QString dateTimeStr = fields[0].left(19);  // "2025-06-23 00:00:00"
-        QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
-
-        stroke.timestamp = dt.toSecsSinceEpoch();
-        stroke.open = fields[1].toDouble();
-        stroke.high = fields[2].toDouble();
-        stroke.low = fields[3].toDouble();
-        stroke.close = fields[4].toDouble();
-        stroke.volume = fields[5].toLongLong();
-
-        if (stroke.isValid()) {
-
-            currentTable.append(stroke);
-        }else {
-            qDebug() << "Found not valid stroke or it first stroke";
-        }
-    }
-
-    for (historicalCSVStroke stroke : currentTable) {
-
-        historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
-    }
-
-    file.close();
-    historicalData.close();
-
-    ui->tabWidget->setTabEnabled(1, true);
-
-    qDebug() << "Import done";
+    dataManager::instance()->importCSV(currentFolderItem, fileName);
 }
 
 void historicalWindow::exportFileClicked() {
@@ -429,7 +419,7 @@ void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
 
     if (arg1.isEmpty()) {
 
-        ui->folderItemsTable->setRowCount(0);
+        folderItemsTable->setRowCount(0);
         QDirIterator it(currentFolder, QDir::Files);
 
         while (it.hasNext()) {
@@ -444,18 +434,18 @@ void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
             QTableWidgetItem *item = new QTableWidgetItem(fileName);
             item->setData(ItemDataPath, path);
 
-            const int rowCount = ui->folderItemsTable->rowCount();
+            const int rowCount = folderItemsTable->rowCount();
 
-            ui->folderItemsTable->setRowCount(rowCount + 1);
+            folderItemsTable->setRowCount(rowCount + 1);
 
-            ui->folderItemsTable->setItem(rowCount, 0, item);
-            ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+            folderItemsTable->setItem(rowCount, 0, item);
+            folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
 
         }
     }else {
 
-        while (ui->folderItemsTable->rowCount() > 0) {
-            ui->folderItemsTable->removeRow(0);
+        while (folderItemsTable->rowCount() > 0) {
+            folderItemsTable->removeRow(0);
         }
 
         QDirIterator it(currentFolder, QDir::Files);
@@ -476,12 +466,12 @@ void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
 
             item->setData(ItemDataPath, path);
 
-            const int rowCount = ui->folderItemsTable->rowCount();
+            const int rowCount = folderItemsTable->rowCount();
 
-            ui->folderItemsTable->setRowCount(rowCount + 1);
+            folderItemsTable->setRowCount(rowCount + 1);
 
-            ui->folderItemsTable->setItem(rowCount, 0, item);
-            ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+            folderItemsTable->setItem(rowCount, 0, item);
+            folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
 
         }
     }
@@ -520,35 +510,33 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
         return;
     }
 
-    ui->folderItemsTable->setRowCount(0);
+    folderItemsTable->setRowCount(0);
 
     ui->createSymbolButton->setDisabled(false);
     ui->searchSymbolLineEdit->setDisabled(false);
     ui->importFilesButton->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
 
-    QDirIterator it(currentFolder, QDir::Files);
+    QList<QString> files = historicalDataManager->setCurrentFolder(item->data(ItemDataPath).toString());
 
-    while (it.hasNext()) {
+    for (QString filePath : files) {
 
-        const QString path = it.next();
-        const QString fileName = path.split('/').last().split('.').first();
+        const QString fileName = filePath.split('/').last().split('.').first();
 
-        if (it.filePath().split('.').last() != "hd") {
+        if (filePath.split('.').last() != "hd") {
             continue;
         }
 
-        QTableWidgetItem *item = new QTableWidgetItem(fileName);
+        QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
 
-        item->setData(ItemDataPath, path);
+        tableWidget->setData(ItemDataPath, filePath);
 
-        const int rowCount = ui->folderItemsTable->rowCount();
+        const int rowCount = folderItemsTable->rowCount();
 
-        ui->folderItemsTable->setRowCount(rowCount + 1);
+        folderItemsTable->setRowCount(rowCount + 1);
 
-        ui->folderItemsTable->setItem(rowCount, 0, item);
-        ui->folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
-
+        folderItemsTable->setItem(rowCount, 0, tableWidget);
+        folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
     }
 }
 
@@ -668,11 +656,11 @@ void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractIte
 
 void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
-    if (!ui->folderItemsTable->item(currentRow, 0)) {
+    if (!folderItemsTable->item(currentRow, 0)) {
         qDebug() << "historicalWindow::folderItemSelected: cell in row " << currentRow << " not valid maybe click on table without selected folder";
         return;
     }
-    currentFolderItem = ui->folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
+    currentFolderItem = folderItemsTable->item(currentRow, 0)->data(ItemDataPath).toString();
 
     if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {
 
@@ -770,7 +758,7 @@ void historicalWindow::settingValueChanged(const int row, const int column) cons
 
 void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
-    const QTableWidgetItem *item = ui->folderItemsTable->itemAt(pos);
+    const QTableWidgetItem *item = folderItemsTable->itemAt(pos);
     if (!item) return;
 
     QMenu contextMenu(this);
@@ -781,7 +769,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
     const QAction *deleteCSVAction = contextMenu.addAction("Delete csv");
     const QAction *downloadCSVAction = contextMenu.addAction("Download csv");
     const QAction *deleteAction = contextMenu.addAction("Delete");
-    const QAction *selectedAction = contextMenu.exec(ui->folderItemsTable->mapToGlobal(pos));
+    const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
 
     currentFolderItem = item->data(ItemDataPath).toString();
 
@@ -790,7 +778,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         const QString pathToData = item->data(ItemDataPath).toString();
         QFile::remove(pathToData);
 
-        ui->folderItemsTable->removeRow( ui->folderItemsTable->currentRow());
+        folderItemsTable->removeRow( folderItemsTable->currentRow());
     } else if (selectedAction == importCSVAction) {
 
         importFileClicked();
@@ -814,46 +802,30 @@ void historicalWindow::tabBarClicked(int index) {
 
     if (index == 1) {
 
-        const QString path = currentFolderItem.split('.').first() + ".data";
+        connect(historicalDataManager, &dataManager::strokeLoaded, [=](historicalCSVStroke stroke) {
 
-        QFile historicalData(path);
+            const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
 
-        if (!historicalData.open(QIODevice::ReadOnly)) {
-            qDebug() << "Fail to open file: " << historicalData.errorString();
-            return;
-        }
+            const int rowCount = ui->symbolDataTableWidget->rowCount();
+            ui->symbolDataTableWidget->setRowCount(rowCount + 1 );
 
-        QString dateFormat = "yyyy-MM-dd HH:mm:ss";
-
-        while (!historicalData.atEnd()) {
-            historicalCSVStroke stroke{};
-            const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
-            if (bytesRead == sizeof(historicalCSVStroke)) {
-
-                if (!stroke.isValid()) {
+            if (!stroke.isValid()) {
                     qDebug() << "Found not valid stroke or it first stroke";
-                    continue;
-                }
-
-                const int rowCount = ui->symbolDataTableWidget->rowCount();
-                ui->symbolDataTableWidget->setRowCount(rowCount + 1);
-
-                ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
-                ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
-                ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
-                ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
-                ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
-                ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
-
-                currentTable.append(stroke);
-            } else {
-
-                qWarning() << "empty file or damaged file";
-                break;
+                    return;
             }
-        }
 
-        historicalData.close();
+            ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
+            ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+
+            currentTable.append(stroke);
+            qDebug() << "Stroke loaded";
+        });
+
+        historicalDataManager->loadGraphicAsync(currentFolderItem);
 
         connect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
     }else if (index == 0) {
@@ -871,17 +843,6 @@ void historicalWindow::tabBarClicked(int index) {
         series->setMaximumColumnWidth(5);
         series->setMinimumColumnWidth(1.5);
 
-        for (const historicalCSVStroke stroke : currentTable) {
-
-            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp);
-            if (stroke.close >= stroke.open) {
-                set->setPen(QPen(QColor("#2ecc71"), 0.8));
-            } else {
-                set->setPen(QPen(QColor("#e74c3c"), 0.8));
-            }
-            series->append(set);
-        }
-
         QChart *chart = new QChart();
         chart->addSeries(series);
         chart->setTitle("Candlestick");
@@ -892,8 +853,8 @@ void historicalWindow::tabBarClicked(int index) {
         chart->addAxis(axisX, Qt::AlignBottom);
         series->attachAxis(axisX);
 
-        qint64 minTimestamp = currentTable.front().timestamp;
-        qint64 maxTimestamp = currentTable.back().timestamp;
+        const qint64 minTimestamp = currentTable.front().timestamp;
+        const qint64 maxTimestamp = currentTable.back().timestamp;
         axisX->setMin(QDateTime::fromMSecsSinceEpoch(minTimestamp));
         axisX->setMax(QDateTime::fromMSecsSinceEpoch(maxTimestamp));
 
@@ -930,6 +891,42 @@ void historicalWindow::tabBarClicked(int index) {
         chartView->setRenderHint(QPainter::Antialiasing);
         chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState | QGraphicsView::DontAdjustForAntialiasing);
         chartView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
+
+        for (const historicalCSVStroke stroke : currentTable) {
+
+            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp);
+            if (stroke.close >= stroke.open) {
+                set->setPen(QPen(QColor("#2ecc71"), 0.5));
+            } else {
+                set->setPen(QPen(QColor("#e74c3c"), 0.5));
+            }
+            series->append(set);
+        }
+
+        connect(historicalDataManager, &dataManager::strokeLoaded, [=](historicalCSVStroke stroke) {
+
+            const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+
+            const int rowCount = ui->symbolDataTableWidget->rowCount();
+            ui->symbolDataTableWidget->setRowCount(rowCount + 1 );
+
+            if (!stroke.isValid()) {
+                    qDebug() << "Found not valid stroke or it first stroke";
+                    return;
+            }
+
+            ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
+            ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+
+            currentTable.append(stroke);
+            qDebug() << "Stroke loaded";
+        });
+
+        historicalDataManager->loadGraphicAsync(currentFolderItem);
     }
 }
 
@@ -1042,4 +1039,59 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
     }
 
     historicalData.close();
+}
+
+void historicalWindow::showMessageBox(eMessageBoxType messageBoxType) {
+
+    switch (messageBoxType) {
+        case startImport:
+
+            if (waitWindow) return;
+            waitWindow = new customMessageBox(this);
+            waitWindow->setWindowModality(Qt::ApplicationModal);
+            waitWindow->setWindowTitle("Please, wait");
+            waitWindow->show();
+
+            connect(historicalDataManager, &dataManager::importDone, this, &historicalWindow::removeMessageBox);
+
+            break;
+        case startExport:
+
+            if (waitWindow) return;
+            waitWindow = new customMessageBox(this);
+            waitWindow->setWindowModality(Qt::ApplicationModal);
+            waitWindow->setWindowTitle("Please, wait");
+            waitWindow->show();
+
+            connect(historicalDataManager, &dataManager::exportDone, this, &historicalWindow::removeMessageBox);
+
+            break;
+        case startDownload:
+
+            if (waitWindow) return;
+
+            waitWindow = new customMessageBox(this);
+            waitWindow->setWindowModality(Qt::ApplicationModal);
+            waitWindow->setWindowTitle("Please, wait");
+            waitWindow->show();
+
+            connect(historicalDataManager, &dataManager::yahooDataDownloaded, this, &historicalWindow::removeMessageBox);
+
+            break;
+        default:
+
+            qDebug() << "Warning historicalWindow::showMessageBox: update showMessageBox switch default code called";
+    }
+}
+
+void historicalWindow::removeMessageBox() {
+    if (waitWindow) {
+
+        waitWindow->close();
+        waitWindow = nullptr;
+
+        disconnect(historicalDataManager, &dataManager::importDone, this, &historicalWindow::removeMessageBox);
+        disconnect(historicalDataManager, &dataManager::exportDone, this, &historicalWindow::removeMessageBox);
+        disconnect(historicalDataManager, &dataManager::yahooDataDownloaded, this, &historicalWindow::removeMessageBox);
+    }
 }

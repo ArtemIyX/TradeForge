@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Charts Network)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Charts Concurrent)
 
 qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         main.cpp
@@ -39,6 +39,8 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/HistoricalWindow/DownloadCSVWindow/downloadcsvwindow.cpp
         Widgets/HistoricalWindow/DownloadCSVWindow/downloadcsvwindow.h
         Widgets/HistoricalWindow/DownloadCSVWindow/downloadcsvwindow.ui
+        Widgets/HistoricalWindow/CustomMessageBox/custommessagebox.cpp
+        Widgets/HistoricalWindow/CustomMessageBox/custommessagebox.h
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -46,7 +48,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt::Core
         Qt::Widgets
         Qt::Charts
-        Qt::Network
+        Qt::Concurrent
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
