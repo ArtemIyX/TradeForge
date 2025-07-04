@@ -4,17 +4,18 @@
 
 #include "historicaldataManager.h"
 #include <QFile>
-#include <QDirIterator>
-#include <QFileDialog>
 #include <QTextStream>
 #include <QDebug>
 #include <QDateTime>
 #include <QTableWidget>
 #include <QApplication>
 #include <qfuture.h>
+#include <qgraphicsitem.h>
 #include <QtConcurrent>
 #include <QMessageBox>
 #include <qprocess.h>
+
+#include "symboldata.h"
 
 dataManager* dataManager::m_instance = nullptr;
 
@@ -33,17 +34,9 @@ dataManager::~dataManager() {
     delete treeModel;
 }
 
-void dataManager::initialize(const QString& dataFolderPath) {
-    dataFolder = dataFolderPath;
-    if (!QDir(dataFolder).exists()) {
-        QDir().mkpath(dataFolder);
-    }
-    loadTreeViewItems();
-}
-
 bool dataManager::createFolder(const QString& parentPath, const QString& folderName) {
-    QString folderPath = parentPath + "/" + folderName;
-    QDir dir(folderPath);
+    const QString folderPath = parentPath + "/" + folderName;
+    const QDir dir(folderPath);
     if (dir.exists()) {
         return false;
     }
@@ -87,18 +80,18 @@ bool dataManager::deleteFolder(const QString& folderPath) {
         return false;
     }
 
-    QStandardItem* item = nullptr;
+    const QStandardItem* item = nullptr;
     QDirIterator it(dataFolder, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString path = it.next();
         if (path == folderPath) {
-            QString relativePath = QDir(dataFolder).relativeFilePath(path);
+            const QString relativePath = QDir(dataFolder).relativeFilePath(path);
             QStringList parts = relativePath.split("/", Qt::SkipEmptyParts);
-            QStandardItem* current = treeModel->invisibleRootItem();
+            const QStandardItem* current = treeModel->invisibleRootItem();
             for (const auto& part : parts) {
                 bool found = false;
                 for (int row = 0; row < current->rowCount(); ++row) {
-                    QStandardItem* child = current->child(row);
+                    const QStandardItem* child = current->child(row);
                     if (child->text() == part) {
                         current = child;
                         found = true;
@@ -123,13 +116,13 @@ bool dataManager::deleteFolder(const QString& folderPath) {
 }
 
 bool dataManager::createSymbol(const QString& folderPath, const QString& symbolName, const QList<symbolSettings>& settings) {
-    QString filePath = folderPath + "/" + symbolName + ".hd";
+    const QString filePath = folderPath + "/" + symbolName + ".hd";
     QFile file(filePath);
     if (file.exists()) {
         return false;
     }
 
-    QList<symbolSettings> initialSettings = settings.isEmpty() ? QList<symbolSettings>{
+    const QList<symbolSettings> initialSettings = settings.isEmpty() ? QList<symbolSettings>{
         {"ticker", "EURUSD"},
         {"description", "EUR/USD"},
         {"contract_size", "1"},
@@ -169,7 +162,7 @@ bool dataManager::renameSymbol(const QString& oldPath, const QString& newName) {
     if (!file.exists()) {
         return false;
     }
-    QString newPath = oldPath.section('/', 0, -2) + "/" + newName + ".hd";
+    const QString newPath = oldPath.section('/', 0, -2) + "/" + newName + ".hd";
     if (file.rename(newPath)) {
         emit symbolSettingsUpdated(newPath);
         return true;
@@ -343,10 +336,10 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
         return false;
     }
 
-    QString scriptPath = QDir(QDir::currentPath()).filePath("Utils/YahooDownloader.py");
+    const QString scriptPath = QDir(QDir::currentPath()).filePath("Utils/YahooDownloader.py");
 
     QProcess process;
-    QStringList arguments = {
+    const QStringList arguments = {
         scriptPath,
         symbol,
         startDate.toString("yyyy-MM-dd"),
@@ -357,7 +350,7 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
     process.start("python", arguments);
     process.waitForFinished(-1); // Wait indefinitely for completion
 
-    bool success = (process.exitCode() == 0);
+    const bool success = (process.exitCode() == 0);
     if (!success) {
         qDebug() << "Python script failed with exit code:" << process.exitCode();
         qDebug() << "Standard output:" << QString(process.readAllStandardOutput());
@@ -366,10 +359,9 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
         qDebug() << "Python script completed successfully";
     }
 
-    QString safeOutputFilePath = outputFilePath;
-    QString symbolPath = QFileInfo(outputFilePath).absolutePath() + "/" + QFileInfo(outputFilePath).fileName().split('.').first() + ".hd";
+    const QString symbolPath = QFileInfo(outputFilePath).absolutePath() + "/" + QFileInfo(outputFilePath).fileName().split('.').first() + ".hd";
 
-    importCSV(symbolPath, safeOutputFilePath);
+    importCSV(symbolPath, outputFilePath);
 
     connect(this, &dataManager::historicalDataUpdated, this, &dataManager::importDownloadedCSVDone);
 
@@ -394,7 +386,7 @@ void dataManager::importDownloadedCSVDone(const QString& symbolPath) {
 
     disconnect(this, &dataManager::historicalDataUpdated, this, &dataManager::importDownloadedCSVDone);
 
-    QString safeOutputFilePath = symbolPath.split('.').first() + ".csv";
+    const QString safeOutputFilePath = symbolPath.split('.').first() + ".csv";
 
     QFile csvFile(safeOutputFilePath);
     if (csvFile.exists()) {
@@ -480,63 +472,33 @@ void dataManager::populateSymbolDataTable(const QString& symbolPath, QTableWidge
     }
 }
 
-void dataManager::loadGraphicAsync(const QString &symbolPath) {
+bool dataManager::loadGraphicAsync(const QString &symbolPath) {
 
-    /*if (symbolPath != currentLoadingSymbol) {
-        bCancelAsyncLoading.store(true);
+    bool startLoading;
+    const QString filePath = symbolPath.split('.').first() + ".data";
 
-        if (graphicLoader.isRunning()) {
-            graphicLoader.waitForFinished();
+    if (symbol) {
+        if (symbol->getPath() != filePath) {
+
+            symbol->deleteLater();
+            symbol = new symbolData(filePath);
+            connect(symbol, &symbolData::strokeLoaded, this, [this](historicalCSVStroke stroke) {
+                emit strokeLoaded(stroke);
+            });
+            symbol->startLoading();
         }
+        startLoading = symbol->getIsStartLoading();
+    }else {
 
-        bCancelAsyncLoading.store(false);
+        symbol = new symbolData(filePath);
+        connect(symbol, &symbolData::strokeLoaded, this, [this](historicalCSVStroke stroke) {
+            emit strokeLoaded(stroke);
+        });
+        startLoading = symbol->getIsStartLoading();
+        symbol->startLoading();
     }
 
-    if (graphicLoader.isRunning()) {
-        return;
-    }*/
-
-    currentLoadingSymbol = symbolPath;
-    graphicLoader = QtConcurrent::run([this, symbolPath]()
-    {
-        QFile historicalData(symbolPath.split('.').first() + ".data");
-
-        if (!historicalData.open(QIODevice::ReadOnly)) {
-            qDebug() << "historicalWindow::folderItemSelected read failed: " << historicalData.errorString();
-            return;
-        }
-
-        while (!historicalData.atEnd()) {
-            if (bCancelAsyncLoading.load()) {
-                qDebug() << "Task canceled for symbolPath:" << symbolPath;
-                break;
-            }
-
-            historicalCSVStroke stroke{};
-            const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
-            if (bytesRead == sizeof(historicalCSVStroke)) {
-
-                if (!stroke.isValid()) {
-                    qDebug() << "Found not valid stroke or it first stroke";
-                    continue;
-                }
-
-                currentGraphic.append(stroke);
-                QMetaObject::invokeMethod(this, [stroke, this]{
-
-                    emit strokeLoaded(stroke);
-                }, Qt::QueuedConnection);
-
-                QThread::msleep(10);
-            } else {
-
-                qWarning() << "empty file or damaged file";
-                break;
-            }
-        }
-
-    historicalData.close();
-    });
+    return startLoading;
 }
 
 void dataManager::loadTreeViewItems() {

@@ -14,7 +14,6 @@ symbolData::symbolData(QString path, QObject *parent) :
     QObject(parent) {
 
     filePath = path;
-    startLoading();
 }
 
 symbolData::~symbolData() {
@@ -22,6 +21,10 @@ symbolData::~symbolData() {
 }
 
 void symbolData::startLoading() {
+
+    if (isStartLoading) { return;}
+
+    isStartLoading = true;
 
     QtConcurrent::run([this]()
     {
@@ -49,7 +52,7 @@ void symbolData::startLoading() {
                     emit strokeLoaded(stroke);
                 }, Qt::QueuedConnection);
 
-                QThread::msleep(10);
+                QThread::msleep(5);
             } else {
 
                 qWarning() << "empty file or damaged file";

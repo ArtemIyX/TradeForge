@@ -17,17 +17,19 @@ public:
     ~symbolData() override;
 
     bool getState() const {return isLoaded;}
-
+    bool getIsStartLoading() const {return isStartLoading;}
     QList<historicalCSVStroke> getData() const { return data; }
+    QString getPath() {return filePath;}
+
+    void startLoading();
 
 signals:
     void strokeLoaded(historicalCSVStroke stroke);
 
 private:
 
-    void startLoading();
-
     QString filePath;
+    bool isStartLoading = false;
     bool isLoaded = false;
     QList<historicalCSVStroke> data;
 };

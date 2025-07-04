@@ -7,8 +7,9 @@
 
 #include <QStandardItemModel>
 #include <QDir>
-#include <qfuture.h>
+#include <QPointer>
 
+#include "symboldata.h"
 #include "SymbolStructs.cuh"
 
 enum eMessageBoxType : int {
@@ -27,8 +28,6 @@ class dataManager : public QObject {
 public:
     static dataManager* instance();
 
-    void initialize(const QString& dataFolderPath = QDir::currentPath() + "/data");
-
     bool createFolder(const QString& parentPath, const QString& folderName);
     bool deleteFolder(const QString& folderPath);
     bool createSymbol(const QString& folderPath, const QString& symbolName, const QList<symbolSettings>& settings = {});
@@ -41,19 +40,20 @@ public:
     void importFiles(const QList<QString>& files, const QString &importPath, const QList<symbolSettings>& filesSettings);
     bool downloadYahooFinanceData(const QString& symbol, const QDate& startDate, const QDate& endDate, const QString& outputFilePath);
 
-    ///set QString currentFolder and returns files in this folder
+    ///sets QString currentFolder and returns files in this folder
     QList<QString> setCurrentFolder(const QString &folder);
 
     //Data access
     QStandardItemModel* getTreeModel() const;
     QList<symbolSettings> getSymbolSettings(const QString& symbolPath) const;
     QList<historicalCSVStroke> getHistoricalData(const QString& symbolPath) const;
+    const symbolData* getSymbolData() {return symbol;}
 
     //Table population
     void populateFolderItemsTable(const QString& folderPath, QTableWidget* tableWidget) const;
     void populateSymbolDataTable(const QString& symbolPath, QTableWidget* tableWidget) const;
 
-    void loadGraphicAsync(const QString& symbolPath);
+    bool loadGraphicAsync(const QString& symbolPath);
 
 private slots:
     void importDownloadedCSVDone(const QString& symbolPath);
@@ -78,7 +78,7 @@ private:
     void loadTreeViewItems();
     void updateTreeViewItemIcon(const QModelIndex& index) const;
 
-    QString dataFolder;
+    QString dataFolder = QDir::currentPath() + "/data";
     QStandardItemModel* treeModel;
 
     static dataManager* m_instance;
@@ -86,9 +86,7 @@ private:
     QString currentFolder;
     QList<historicalCSVStroke> currentGraphic;
 
-    QFuture<void> graphicLoader;
-    QString currentLoadingSymbol;
-    std::atomic<bool> bCancelAsyncLoading;
+    QPointer<symbolData> symbol;
 };
 
 #endif //HISTORICALDATAMANAGER_H

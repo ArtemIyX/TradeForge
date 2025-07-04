@@ -5,18 +5,19 @@
 #ifndef HISTORICALWINDOW_H
 #define HISTORICALWINDOW_H
 
+#include <QCandlestickSeries>
 #include <QDialog>
 #include <QDir>
-#include <qpointer.h>
+#include <QPointer>
 
 #include "Components/customStyledItemDelegate.h"
+#include "SymbolStructs.cuh"
 
 class customMessageBox;
 enum eMessageBoxType : int;
 class importFilesWIndow;
 class dataManager;
 class QChartView;
-struct historicalCSVStroke;
 class historicalWindowTable;
 class QTableWidgetItem;
 
@@ -68,6 +69,13 @@ public slots:
     void showMessageBox(eMessageBoxType messageBoxType);
     void removeMessageBox();
 
+    void onSymbolHistoricalDataUpdated(const QString& symbolPath);
+
+    void createTableRowOnStrokeLoaded(historicalCSVStroke stroke);
+    void createCandleOnStrokeLoaded(historicalCSVStroke stroke);
+    void createCandleOnTimer();
+    void createRowOnTimer();
+
 private:
     Ui::historicalWindow *ui;
     dataManager* historicalDataManager = nullptr;
@@ -93,6 +101,14 @@ private:
     Qt::Edges resizeEdges;
 
     QChartView *chartView;
+    QCandlestickSeries *series;
+    QChart *chart;
+
+    QTimer* graphicTimer = nullptr;
+    int graphicCurrentIndex = 0;
+
+    QTimer* tableTimer = nullptr;
+    int tableCurrentIndex = 0;
 
     [[nodiscard]] Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);

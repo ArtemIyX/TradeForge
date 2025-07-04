@@ -7,6 +7,9 @@
 #include <qdatetime.h>
 #include <qdatetimeaxis.h>
 #include <qtimer.h>
+#include <QValueAxis>
+
+class QValueAxis;
 
 candleChartView::candleChartView(QWidget *parent) : QChartView(parent) {
 
@@ -15,12 +18,35 @@ candleChartView::candleChartView(QWidget *parent) : QChartView(parent) {
 void candleChartView::wheelEvent(QWheelEvent *event) {
     const double scaleFactor = 1.15;
 
-    if (event->angleDelta().y() > 0) {
-        // Масштабирование вверх (приближение)
-        chart()->zoom(scaleFactor);
-    } else {
-        // Масштабирование вниз (отдаление)
-        chart()->zoom(1.0 / scaleFactor);
+    QRectF plotArea = chart()->plotArea();
+    QRectF yAxisArea(plotArea.left() - 50, plotArea.top(), 50, plotArea.height());
+
+    QPointF cursorPos = event->position();
+    if (yAxisArea.contains(cursorPos)) {
+        QValueAxis *axisY = qobject_cast<QValueAxis*>(chart()->axisY());
+        if (axisY) {
+            qreal currentMin = axisY->min();
+            qreal currentMax = axisY->max();
+            qreal range = currentMax - currentMin;
+            qreal center = (currentMax + currentMin) / 2;
+
+            qreal scaleFactor = (event->angleDelta().y() > 0) ? 0.9 : 1.1;
+            qreal newRange = range * scaleFactor;
+
+            qreal newMin = center - newRange / 2;
+            qreal newMax = center + newRange / 2;
+
+            if (newRange > 0.1 && newRange < 1000) {
+                axisY->setRange(newMin, newMax);
+            }
+        }
+    }else {
+
+        if (event->angleDelta().y() > 0) {
+            chart()->zoom(scaleFactor);
+        } else {
+            chart()->zoom(1.0 / scaleFactor);
+        }
     }
 
     event->accept();
