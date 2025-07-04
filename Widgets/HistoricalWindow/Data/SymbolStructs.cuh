@@ -6,6 +6,7 @@
 #define SYMBOLSTRUCTS_CUH
 #include <QString>
 #include <QVariant>
+#include <QDateTime>
 
 struct symbolSettings {
 

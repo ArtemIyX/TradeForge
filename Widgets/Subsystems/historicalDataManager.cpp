@@ -178,75 +178,59 @@ bool dataManager::renameSymbol(const QString& oldPath, const QString& newName) {
 }
 
 bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePath) {
-   QFuture<bool> future = QtConcurrent::run([=]() {
-        QFile file(csvFilePath);
-        QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
+    QFile file(csvFilePath);
+    QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
 
-        if (!file.exists() || !historicalData.open(QIODevice::WriteOnly)) {
-            return false;
+    if (!file.exists() || !historicalData.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    emit showMessageBox(startImport);
+
+    QList<historicalCSVStroke> table;
+    QTextStream in(&file);
+    in.setAutoDetectUnicode(true);
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList fields;
+        historicalCSVStroke stroke{};
+
+        if (!line.contains('"')) {
+            fields = line.split(',');
         }
 
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            return false;
+        if (fields.size() < 6) continue;
+
+        QString dateTimeStr = fields[0].left(19);
+        QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
+        stroke.timestamp = dt.toSecsSinceEpoch();
+        stroke.open = fields[1].toDouble();
+        stroke.high = fields[2].toDouble();
+        stroke.low = fields[3].toDouble();
+        stroke.close = fields[4].toDouble();
+        stroke.volume = fields[5].toLongLong();
+
+        if (stroke.isValid()) {
+            table.append(stroke);
         }
+    }
 
-        QMetaObject::invokeMethod(this, [=]() {
-            emit showMessageBox(startImport);
-        }, Qt::QueuedConnection);
+    for (const historicalCSVStroke& stroke : table) {
+        historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
+    }
 
-        QList<historicalCSVStroke> table;
-        QTextStream in(&file);
-        in.setAutoDetectUnicode(true);
+    file.close();
+    historicalData.close();
 
-        while (!in.atEnd()) {
-            QString line = in.readLine();
-            QStringList fields;
-            historicalCSVStroke stroke{};
+    emit historicalDataUpdated(symbolPath);
+    emit importDone();
 
-            if (!line.contains('"')) {
-                fields = line.split(',');
-            }
-
-            if (fields.size() < 6) continue;
-
-            QString dateTimeStr = fields[0].left(19);
-            QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm:ss");
-            stroke.timestamp = dt.toSecsSinceEpoch();
-            stroke.open = fields[1].toDouble();
-            stroke.high = fields[2].toDouble();
-            stroke.low = fields[3].toDouble();
-            stroke.close = fields[4].toDouble();
-            stroke.volume = fields[5].toLongLong();
-
-            if (stroke.isValid()) {
-                table.append(stroke);
-            }
-        }
-
-        for (const historicalCSVStroke& stroke : table) {
-            historicalData.write(reinterpret_cast<const char*>(&stroke), sizeof(historicalCSVStroke));
-        }
-
-        file.close();
-        historicalData.close();
-        return true;
-    });
-
-   auto* watcher = new QFutureWatcher<bool>(this);
-   connect(watcher, &QFutureWatcher<bool>::finished, this, [=]() {
-       bool success = watcher->result();
-       watcher->deleteLater();
-
-       if (success) {
-           emit historicalDataUpdated(symbolPath);
-           emit importDone();
-       } else {
-
-       }
-   });
-   watcher->setFuture(future);
-
-   return true;
+    return true;
 }
 
 bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir) {
@@ -255,7 +239,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
         return false;
     }
 
-    QString filePath = exportDir + "/" + symbolPath.section('/', -1).section('.', 0, -2) + ".csv";
+    const QString filePath = exportDir + "/" + symbolPath.section('/', -1).section('.', 0, -2) + ".csv";
     QFile file(filePath);
     if (file.exists()) {
         file.remove();
@@ -294,7 +278,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
 }
 
 bool dataManager::deleteHistoricalData(const QString& symbolPath) {
-    QString dataPath = symbolPath.section('.', 0, -2) + ".data";
+    const QString dataPath = symbolPath.section('.', 0, -2) + ".data";
     QFile file(dataPath);
     if (!file.exists()) {
         return false;
@@ -483,9 +467,9 @@ void dataManager::populateFolderItemsTable(const QString& folderPath, QTableWidg
 void dataManager::populateSymbolDataTable(const QString& symbolPath, QTableWidget* tableWidget) const {
     tableWidget->setRowCount(0);
     QList<historicalCSVStroke> table = getHistoricalData(symbolPath);
-    QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+    const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
     for (const historicalCSVStroke& stroke : table) {
-        int rowCount = tableWidget->rowCount();
+        const int rowCount = tableWidget->rowCount();
         tableWidget->setRowCount(rowCount + 1);
         tableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
         tableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));

@@ -291,7 +291,7 @@ void historicalWindow::createSymbolClicked() const {
 
     QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
 
-    QList<symbolSettings> initialItemSettings = {{"ticker", "EURUSD"},
+    const QList<symbolSettings> initialItemSettings = {{"ticker", "EURUSD"},
         {"description", "EUR/USD"},
         {"contract_size", "1"},
         {"units", "Share(s)"},
@@ -342,7 +342,7 @@ void historicalWindow::exportFileClicked() {
     }
 
     const QLocale locale;
-    const QChar sep = ',';
+    constexpr QChar sep = ',';
 
     const QString filePath = dirPath + "/" + currentFolderItem.split('/').last().split('.').first() + ".csv";
 
@@ -406,7 +406,7 @@ void historicalWindow::importFilesClicked(bool checked) {
     }
 }
 
-void historicalWindow::searchLineEditTextChanged(const QString &arg1) {
+void historicalWindow::searchLineEditTextChanged(const QString &arg1) const {
 
     if (arg1.isEmpty()) {
 
@@ -510,7 +510,7 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
     QList<QString> files = historicalDataManager->setCurrentFolder(item->data(ItemDataPath).toString());
 
-    for (QString filePath : files) {
+    for (const QString& filePath : files) {
 
         const QString fileName = filePath.split('/').last().split('.').first();
 
@@ -793,7 +793,7 @@ void historicalWindow::tabBarClicked(int index) {
 
     if (index == 1) {
 
-        connect(historicalDataManager, &dataManager::strokeLoaded, [=](historicalCSVStroke stroke) {
+        connect(historicalDataManager, &dataManager::strokeLoaded, [=](const historicalCSVStroke &stroke) {
 
             const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
 
@@ -859,10 +859,8 @@ void historicalWindow::tabBarClicked(int index) {
 
         chart->setBackgroundBrush(QBrush(QColor("#252525")));
         chart->setTitleBrush(QBrush(Qt::white));
-
         axisX->setTitleBrush(QBrush(Qt::white));
         axisX->setLabelsColor(Qt::white);
-
         axisY->setTitleBrush(QBrush(Qt::white));
         axisY->setLabelsColor(Qt::white);
 
@@ -873,9 +871,9 @@ void historicalWindow::tabBarClicked(int index) {
         chartView->setInteractive(true);
 
         connect(axisX, &QDateTimeAxis::rangeChanged, this, [=](const QDateTime &min, const QDateTime &max) {
-            qint64 rangeMs = min.msecsTo(max);
-            int candleCount = series->sets().size();
-            qreal width = 0.8 / (candleCount / (rangeMs / 86400000.0));
+            const qint64 rangeMs = min.msecsTo(max);
+            const int candleCount = series->sets().size();
+            const qreal width = 0.8 / (candleCount / (rangeMs / 86400000.0));
             series->setBodyWidth(qMax(0.1, qMin(0.8, width)));
         });
 
@@ -891,10 +889,18 @@ void historicalWindow::tabBarClicked(int index) {
             } else {
                 set->setPen(QPen(QColor("#e74c3c"), 0.5));
             }
+
+            /// testing candle max height
+            constexpr int maxHeight = 50;
+            if (stroke.high - stroke.low > maxHeight) {
+
+                set->setHigh(stroke.low + maxHeight);
+            }
+
             series->append(set);
         }
 
-        connect(historicalDataManager, &dataManager::strokeLoaded, [=](historicalCSVStroke stroke) {
+        connect(historicalDataManager, &dataManager::strokeLoaded, [=](const historicalCSVStroke &stroke) {
 
             const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
 

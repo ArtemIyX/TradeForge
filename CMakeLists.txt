@@ -41,6 +41,8 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/HistoricalWindow/DownloadCSVWindow/downloadcsvwindow.ui
         Widgets/HistoricalWindow/CustomMessageBox/custommessagebox.cpp
         Widgets/HistoricalWindow/CustomMessageBox/custommessagebox.h
+        Widgets/Subsystems/symboldata.cpp
+        Widgets/Subsystems/symboldata.h
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -76,6 +78,15 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         --no-opengl-sw
         --compiler-runtime
         $<TARGET_FILE:${PROJECT_NAME}>
+)
+
+set(PythonFiles
+        ${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PythonFiles}
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>" "Utils/"
 )
 
 qt_generate_deploy_app_script(

@@ -50,7 +50,7 @@ public slots:
     void exportFileClicked();
     void importFilesClicked(bool checked);
 
-    void searchLineEditTextChanged(const QString &arg1);
+    void searchLineEditTextChanged(const QString &arg1) const;
 
     void symbolNameAccepted(QTableWidgetItem* item) const;
     void treeViewItemClicked(const QModelIndex &index);
