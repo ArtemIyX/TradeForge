@@ -42,6 +42,7 @@ public:
 
     ///sets QString currentFolder and returns files in this folder
     QList<QString> setCurrentFolder(const QString &folder);
+    void setCurrentSymbol(const QString &symbolPath){ currentSymbol = symbolPath; emit currentSymbolChanged(currentSymbol); }
 
     //Data access
     QStandardItemModel* getTreeModel() const;
@@ -53,7 +54,7 @@ public:
     void populateFolderItemsTable(const QString& folderPath, QTableWidget* tableWidget) const;
     void populateSymbolDataTable(const QString& symbolPath, QTableWidget* tableWidget) const;
 
-    bool loadGraphicAsync(const QString& symbolPath);
+    bool loadCurrentSymbolData();
 
 private slots:
     void importDownloadedCSVDone(const QString& symbolPath);
@@ -67,6 +68,7 @@ signals:
     void historicalDataUpdated(const QString& symbolPath);
     void yahooDataDownloaded(const QString& outputFilePath, bool success);
     void strokeLoaded(historicalCSVStroke stroke);
+    void currentSymbolChanged(const QString& symbolPath);
 
 private:
     explicit dataManager(QObject* parent = nullptr);
@@ -84,6 +86,7 @@ private:
     static dataManager* m_instance;
 
     QString currentFolder;
+    QString currentSymbol;
     QList<historicalCSVStroke> currentGraphic;
 
     QPointer<symbolData> symbol;

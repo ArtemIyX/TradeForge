@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,10 +18,15 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+
+    void closeEvent(QCloseEvent *event);
+
 private:
     Ui::MainWindow *ui;
 
-    QDialog *historicalMenuWidget = nullptr;
+    QPointer<QDialog> historicalMenuWidget = nullptr;
+    QPointer<QWidget> terminalWidget = nullptr;
 
     QList<QObject*> subsystems = {};
 };

@@ -84,7 +84,7 @@ customTitleBar::~customTitleBar() {
 }
 
 void customTitleBar::closeButtonClicked() const {
-    qobject_cast<QDialog*>(parentWindow)->deleteLater();
+    parentWindow->deleteLater();
 }
 
 void customTitleBar::minimizeButtonClicked() const {

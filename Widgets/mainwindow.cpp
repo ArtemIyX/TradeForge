@@ -1,7 +1,11 @@
 #include "mainwindow.h"
+
+#include <qevent.h>
+
 #include "ui_mainwindow.h"
 #include "HistoricalWindow/historicalwindow.h"
 #include "Subsystems/historicalDataManager.h"
+#include "Terminal/terminal.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -17,19 +21,16 @@ MainWindow::MainWindow(QWidget *parent)
         if (!historicalMenuWidget) {
 
             historicalMenuWidget = new historicalWindow();
-
             historicalMenuWidget->show();
+        }
+    });
 
-            connect(historicalMenuWidget, Q_SIGNAL(&QObject::destroyed), [this]() {
+    fileMenu->addAction("Terminal", [this]() {
 
-                disconnect(historicalMenuWidget, nullptr, this, nullptr);
+        if (!terminalWidget) {
 
-                historicalMenuWidget = nullptr;
-            });
-
-        }else {
-
-            qDebug() << historicalMenuWidget->objectName();
+            terminalWidget = new terminal();
+            terminalWidget->show();
         }
     });
 }
@@ -37,4 +38,13 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+
+    for (const QObject *system : subsystems) {
+        delete system;
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+    createLogBackup();
+    event->accept();
 }

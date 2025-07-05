@@ -83,6 +83,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(historicalDataManager, &dataManager::showMessageBox, this, &historicalWindow::showMessageBox);
     connect(historicalDataManager, &dataManager::historicalDataUpdated, this, &historicalWindow::onSymbolHistoricalDataUpdated);
+    connect(historicalDataManager, &dataManager::currentSymbolChanged, this, &historicalWindow::onSymbolChanged);
 
     ui->tabWidget->tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     ui->tabWidget->setTabEnabled(1, false);
@@ -150,6 +151,53 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     chartView = new candleChartView();
     chartView->setRenderHint(QPainter::Antialiasing);
+
+    series = new QCandlestickSeries();
+
+    series->setIncreasingColor(QColor("#2ecc71"));
+    series->setDecreasingColor(QColor("#e74c3c"));
+    series->setBodyOutlineVisible(false);
+    series->setMaximumColumnWidth(5);
+    series->setMinimumColumnWidth(1.5);
+
+    chart = new QChart();
+    chart->addSeries(series);
+    chart->setTitle("Candlestick");
+
+    auto *axisX = new QDateTimeAxis;
+    axisX->setFormat("dd.MM.yyyy");
+    axisX->setTitleText("Date");
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
+
+    axisX->setMin(QDateTime(QDate(2000, 1, 1), QTime(12, 0, 0)));
+    axisX->setMax(QDateTime(QDate(2025, 1, 1), QTime(12, 0, 0)));
+
+    axisX->setTickCount(10);
+
+    auto *axisY = new QValueAxis;
+    axisY->setLabelFormat("%.2f");
+    axisY->setTitleText("Price");
+    axisY->setRange(40, 50);
+    chart->addAxis(axisY, Qt::AlignLeft);
+    series->attachAxis(axisY);
+
+    chart->setBackgroundBrush(QBrush(QColor("#252525")));
+    chart->setTitleBrush(QBrush(Qt::white));
+    axisX->setTitleBrush(QBrush(Qt::white));
+    axisX->setLabelsColor(Qt::white);
+    axisY->setTitleBrush(QBrush(Qt::white));
+    axisY->setLabelsColor(Qt::white);
+
+    //series->setUseOpenGL(true);
+    chartView->setChart(chart);
+
+    chartView->setDragMode(QGraphicsView::NoDrag);
+    chartView->setInteractive(true);
+
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState | QGraphicsView::DontAdjustForAntialiasing);
+    chartView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
     ui->currentCSVTable->setLayout(new QVBoxLayout());
     ui->currentCSVTable->layout()->addWidget(chartView);
@@ -662,59 +710,8 @@ void historicalWindow::folderItemSelected(const int currentRow, int currentColum
         ui->tabWidget->setTabEnabled(2, false);
     }
 
-    QFile file(currentFolderItem);
-
-    QList<symbolSettings> itemSettings;
-
-    if (file.open(QIODevice::ReadOnly)) {
-        QDataStream dataStream(&file);
-
-        dataStream >> itemSettings;
-
-        file.close();
-
-        if (itemSettings.isEmpty()) {
-            itemSettings = {symbolSettings("ticker", "EURUAH"),
-                symbolSettings("description", ""),
-                symbolSettings("contract_size", "15")};
-        }
-    }
-
-    itemSettingsTable->setRowCount(static_cast<int>(itemSettings.size()));
-
-    for (int i = 0; i < itemSettings.size(); ++i) {
-
-        itemSettingsTable->setItem(i, 0, new QTableWidgetItem(itemSettings[i].settingName));
-
-        itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
-    }
-
-    QFile historicalData(currentFolderItem.split('.').first() + ".data");
-
-    if (!historicalData.open(QIODevice::ReadOnly)) {
-        qDebug() << "historicalWindow::folderItemSelected read failed: " << historicalData.errorString();
-        return;
-    }
-
-    while (!historicalData.atEnd()) {
-        historicalCSVStroke stroke{};
-        const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
-        if (bytesRead == sizeof(historicalCSVStroke)) {
-
-            if (!stroke.isValid()) {
-                qDebug() << "Found not valid stroke or it first stroke";
-                continue;
-            }
-
-            currentTable.append(stroke);
-        } else {
-
-            qWarning() << "empty file or damaged file";
-            break;
-        }
-    }
-
-    historicalData.close();
+    historicalDataManager->setCurrentSymbol(currentFolderItem);
+    bSymbolDataNeedLoad = true;
 }
 
 void historicalWindow::settingValueChanged(const int row, const int column) const {
@@ -795,197 +792,107 @@ void historicalWindow::tabBarClicked(int index) {
         disconnect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
     }else if (index == 1) {
 
-        connect(historicalDataManager, &dataManager::strokeLoaded, this,  &historicalWindow::createTableRowOnStrokeLoaded);
+        if (bSymbolDataNeedLoad) {
 
-        const bool isStartLoading = historicalDataManager->loadGraphicAsync(currentFolderItem);
-
-        if (isStartLoading) {
-
-            disconnect(historicalDataManager, &dataManager::strokeLoaded, this, &historicalWindow::createTableRowOnStrokeLoaded);
-
-            if (tableTimer) return;
-
-            tableTimer = new QTimer(this);
-            tableTimer->setInterval(10);
-            connect(tableTimer, &QTimer::timeout, this, &historicalWindow::createRowOnTimer);
-            tableTimer->start();
-
-        }else {
-
-            connect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
+            bSymbolDataNeedLoad = false;
+            historicalDataManager->loadCurrentSymbolData();
         }
+
+        if (ui->symbolDataTableWidget->rowCount() != 0) return;
+
+        const symbolData* symbolData = historicalDataManager->getSymbolData();
+        for (historicalCSVStroke stroke : symbolData->getData()) {
+
+            const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+
+            const int rowCount = ui->symbolDataTableWidget->rowCount();
+            ui->symbolDataTableWidget->setRowCount(rowCount + 1);
+
+            if (!stroke.isValid()) {
+                qDebug() << "Found not valid stroke or it first stroke";
+                return;
+            }
+
+            ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
+            ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+        }
+
+        connect(ui->symbolDataTableWidget, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::currentTableDataChanged);
     }else if (index == 2) {
 
-        chartView->chart()->deleteLater();
+        if (bSymbolDataNeedLoad) {
 
-        series = new QCandlestickSeries();
+            bSymbolDataNeedLoad = false;
+            historicalDataManager->loadCurrentSymbolData();
+        }
 
-        series->setIncreasingColor(QColor("#2ecc71"));
-        series->setDecreasingColor(QColor("#e74c3c"));
-        series->setBodyOutlineVisible(false);
-        series->setMaximumColumnWidth(5);
-        series->setMinimumColumnWidth(1.5);
+        if (!series->sets().isEmpty()) return;
 
-        chart = new QChart();
-        chart->addSeries(series);
-        chart->setTitle("Candlestick");
+        const symbolData* symbolData = historicalDataManager->getSymbolData();
+        for (historicalCSVStroke stroke : symbolData->getData()) {
 
-        auto *axisX = new QDateTimeAxis;
-        axisX->setFormat("dd.MM.yyyy");
-        axisX->setTitleText("Date");
-        chart->addAxis(axisX, Qt::AlignBottom);
-        series->attachAxis(axisX);
+            if (!stroke.isValid()) {
+                qDebug() << "Found not valid stroke or it first stroke";
+                return;
+            }
 
-        axisX->setMin(QDateTime(QDate(2000, 1, 1), QTime(12, 0, 0)));
-        axisX->setMax(QDateTime(QDate(2025, 1, 1), QTime(12, 0, 0)));
+            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
+            if (stroke.close >= stroke.open) {
+                set->setPen(QPen(QColor("#2ecc71"), 0.5));
+            } else {
+                set->setPen(QPen(QColor("#e74c3c"), 0.5));
+            }
 
-        axisX->setTickCount(10);
-
-        auto *axisY = new QValueAxis;
-        axisY->setLabelFormat("%.2f");
-        axisY->setTitleText("Price");
-        axisY->setRange(40, 50);
-        chart->addAxis(axisY, Qt::AlignLeft);
-        series->attachAxis(axisY);
-
-        chart->setBackgroundBrush(QBrush(QColor("#252525")));
-        chart->setTitleBrush(QBrush(Qt::white));
-        axisX->setTitleBrush(QBrush(Qt::white));
-        axisX->setLabelsColor(Qt::white);
-        axisY->setTitleBrush(QBrush(Qt::white));
-        axisY->setLabelsColor(Qt::white);
-
-        //series->setUseOpenGL(true);
-        chartView->setChart(chart);
-
-        chartView->setDragMode(QGraphicsView::NoDrag);
-        chartView->setInteractive(true);
-
-        chartView->setRenderHint(QPainter::Antialiasing);
-        chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState | QGraphicsView::DontAdjustForAntialiasing);
-        chartView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-
-        connect(historicalDataManager, &dataManager::strokeLoaded, this,  &historicalWindow::createCandleOnStrokeLoaded);
-
-        const bool isStartLoading = historicalDataManager->loadGraphicAsync(currentFolderItem);
-
-        if (isStartLoading) {
-
-            disconnect(historicalDataManager, &dataManager::strokeLoaded, this, &historicalWindow::createCandleOnStrokeLoaded);
-
-            if (graphicTimer) return;
-
-            graphicTimer = new QTimer(this);
-            graphicTimer->setInterval(10);
-            connect(graphicTimer, &QTimer::timeout, this, &historicalWindow::createCandleOnTimer);
-            graphicTimer->start();
+            series->append(set);
         }
     }
 }
 
-void historicalWindow::createTableRowOnStrokeLoaded(historicalCSVStroke stroke) {
+void historicalWindow::drawSymbolData() {
 
-    const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+    if (bSymbolDataNeedLoad) {
 
-    const int rowCount = ui->symbolDataTableWidget->rowCount();
-    ui->symbolDataTableWidget->setRowCount(rowCount + 1 );
+        bSymbolDataNeedLoad = false;
 
-    if (!stroke.isValid()) {
-        qDebug() << "Found not valid stroke or it first stroke";
-        return;
-    }
+        if (!historicalDataManager->getSymbolData()) {
 
-    ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
-    ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
-
-    currentTable.append(stroke);
-}
-
-void historicalWindow::createCandleOnStrokeLoaded(historicalCSVStroke stroke) {
-
-    if (!stroke.isValid()) {
-        qDebug() << "Found not valid stroke or it first stroke";
-        return;
-    }
-
-    QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
-    if (stroke.close >= stroke.open) {
-        set->setPen(QPen(QColor("#2ecc71"), 0.5));
-    } else {
-        set->setPen(QPen(QColor("#e74c3c"), 0.5));
-    }
-
-    series->append(set);
-    chart->update();
-}
-
-void historicalWindow::createCandleOnTimer() {
-
-    historicalCSVStroke stroke;
-    if (historicalDataManager->getSymbolData()->getData().size() > graphicCurrentIndex) {
-        stroke = historicalDataManager->getSymbolData()->getData()[graphicCurrentIndex];
-
-    }else {
-        graphicCurrentIndex = 0;
-        graphicTimer->deleteLater();
-        return;
-    }
-
-    if (!stroke.isValid()) {
-        qDebug() << "Found not valid stroke or it first stroke";
-
-    }else {
-
-        QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
-        if (stroke.close >= stroke.open) {
-            set->setPen(QPen(QColor("#2ecc71"), 2.0));
-        } else {
-            set->setPen(QPen(QColor("#e74c3c"), 2.0));
+            historicalDataManager->loadCurrentSymbolData();
         }
 
-        series->append(set);
-        chart->update();
+        const symbolData* symbolData = historicalDataManager->getSymbolData();
+        for (historicalCSVStroke stroke : symbolData->getData()) {
+
+            const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+
+            const int rowCount = ui->symbolDataTableWidget->rowCount();
+            ui->symbolDataTableWidget->setRowCount(rowCount + 1);
+
+            if (!stroke.isValid()) {
+                qDebug() << "Found not valid stroke or it first stroke";
+                return;
+            }
+
+            ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
+            ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
+            ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
+
+            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
+            if (stroke.close >= stroke.open) {
+                set->setPen(QPen(QColor("#2ecc71"), 0.5));
+            } else {
+                set->setPen(QPen(QColor("#e74c3c"), 0.5));
+            }
+
+            series->append(set);
+        }
     }
-
-    graphicCurrentIndex++;
-}
-
-void historicalWindow::createRowOnTimer() {
-
-    historicalCSVStroke stroke;
-    if (historicalDataManager->getSymbolData()->getData().size() > tableCurrentIndex) {
-        stroke = historicalDataManager->getSymbolData()->getData()[tableCurrentIndex];
-
-    }else {
-        tableCurrentIndex = 0;
-        tableTimer->deleteLater();
-        return;
-    }
-
-    const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
-
-    const int rowCount = ui->symbolDataTableWidget->rowCount();
-    ui->symbolDataTableWidget->setRowCount(rowCount + 1 );
-
-    if (!stroke.isValid()) {
-        qDebug() << "Found not valid stroke or it first stroke";
-        return;
-    }
-
-    ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
-    ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
-    ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
-
-    currentTable.append(stroke);
-
-    tableCurrentIndex++;
 }
 
 void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
@@ -1168,4 +1075,10 @@ void historicalWindow::onSymbolHistoricalDataUpdated(const QString &symbolPath) 
             ui->tabWidget->setTabEnabled(2, false);
         }
     }
+}
+
+void historicalWindow::onSymbolChanged(const QString& symbol) {
+
+    ui->symbolDataTableWidget->setRowCount(0);
+    series->clear();
 }

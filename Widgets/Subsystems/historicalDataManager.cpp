@@ -472,28 +472,22 @@ void dataManager::populateSymbolDataTable(const QString& symbolPath, QTableWidge
     }
 }
 
-bool dataManager::loadGraphicAsync(const QString &symbolPath) {
+bool dataManager::loadCurrentSymbolData() {
 
     bool startLoading;
-    const QString filePath = symbolPath.split('.').first() + ".data";
+    const QString filePath = currentSymbol.split('.').first() + ".data";
 
     if (symbol) {
         if (symbol->getPath() != filePath) {
 
             symbol->deleteLater();
             symbol = new symbolData(filePath);
-            connect(symbol, &symbolData::strokeLoaded, this, [this](historicalCSVStroke stroke) {
-                emit strokeLoaded(stroke);
-            });
             symbol->startLoading();
         }
         startLoading = symbol->getIsStartLoading();
     }else {
 
         symbol = new symbolData(filePath);
-        connect(symbol, &symbolData::strokeLoaded, this, [this](historicalCSVStroke stroke) {
-            emit strokeLoaded(stroke);
-        });
         startLoading = symbol->getIsStartLoading();
         symbol->startLoading();
     }

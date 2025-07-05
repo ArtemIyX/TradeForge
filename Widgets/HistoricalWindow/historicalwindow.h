@@ -13,6 +13,7 @@
 #include "Components/customStyledItemDelegate.h"
 #include "SymbolStructs.cuh"
 
+class symbolData;
 class customMessageBox;
 enum eMessageBoxType : int;
 class importFilesWIndow;
@@ -43,7 +44,6 @@ public:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
-
 public slots:
 
     void createSymbolClicked() const;
@@ -71,10 +71,7 @@ public slots:
 
     void onSymbolHistoricalDataUpdated(const QString& symbolPath);
 
-    void createTableRowOnStrokeLoaded(historicalCSVStroke stroke);
-    void createCandleOnStrokeLoaded(historicalCSVStroke stroke);
-    void createCandleOnTimer();
-    void createRowOnTimer();
+    void onSymbolChanged(const QString& symbol);
 
 private:
     Ui::historicalWindow *ui;
@@ -104,16 +101,14 @@ private:
     QCandlestickSeries *series;
     QChart *chart;
 
-    QTimer* graphicTimer = nullptr;
-    int graphicCurrentIndex = 0;
+    bool bSymbolDataNeedLoad = false;
 
-    QTimer* tableTimer = nullptr;
-    int tableCurrentIndex = 0;
-
-    [[nodiscard]] Qt::Edges edgesAt(const QPoint &pos) const;
+    Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);
 
     void updateTreeViewItemIcon(const QModelIndex& index) const;
+
+    void drawSymbolData();
 };
 
 
