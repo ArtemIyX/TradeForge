@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QMouseEvent>
 #include "../CandleCharts/candleChartView.h"
+#include "../CustomMessageBoxes/messageBoxFactory.h"
 #include "../Subsystems/historicaldataManager.h"
 #include "../Subsystems/symboldata.h"
 #include "../TitleBar/customTitleBar.h"
@@ -201,10 +202,19 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     ui->currentCSVTable->setLayout(new QVBoxLayout());
     ui->currentCSVTable->layout()->addWidget(chartView);
+
+    setupFolderItemsTable();
 }
 
 historicalWindow::~historicalWindow() {
     delete ui;
+}
+
+void historicalWindow::setupFolderItemsTable() {
+
+    folderItemsTable->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(folderItemsTable->horizontalHeader(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
+        this, &historicalWindow::folderItemsHeaderContextMenu);
 }
 
 void historicalWindow::loadTreeViewItems() const {
@@ -331,51 +341,12 @@ void historicalWindow::createSymbolClicked() const {
     QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
 
     const int rowCount = folderItemsTable->rowCount();
-
     folderItemsTable->setRowCount(rowCount + 1);
-
     folderItemsTable->setItem(rowCount, 0, item);
     folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
-
     folderItemsTable->editItem(item);
 
-    QFile file = QFile(currentFolder + "/" + item->text() + ".hd");
-
-    const QList<symbolSettings> initialItemSettings = {{"ticker", "EURUSD"},
-        {"description", "EUR/USD"},
-        {"contract_size", "1"},
-        {"units", "Share(s)"},
-        {"min_volume", 1},
-        {"max_volume", 100000000},
-        {"volume_step", 0.01},
-        {"min_tick", 0.00001},
-        {"leverage", 0.05},
-        {"trade_mode", "full"}
-    };
-
-    if (file.open(QIODevice::WriteOnly)) {
-        QDataStream dataStream(&file);
-
-        dataStream << initialItemSettings;
-
-        file.close();
-
-        item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
-    }
-}
-
-void historicalWindow::importFileClicked() {
-
-    if (currentFolderItem.isEmpty()) { return; }
-
-    const QString fileName = QFileDialog::getOpenFileName(
-        this,
-        "Выберите файл для импорта",
-        "",
-        "CSV таблица (*.csv*)"
-    );
-
-    dataManager::instance()->importCSV(currentFolderItem, fileName);
+    historicalDataManager->createSymbol(currentFolder, item->text());
 }
 
 void historicalWindow::exportFileClicked() {
@@ -386,60 +357,7 @@ void historicalWindow::exportFileClicked() {
         ""
     );
 
-    if (currentTable.isEmpty()) {
-        qDebug() << "Error exportFileClicked: No data to export";
-        return;
-    }
-
-    constexpr QChar sep = ',';
-
-    const QString filePath = dirPath + "/" + currentFolderItem.split('/').last().split('.').first() + ".csv";
-
-    if (QFile::exists(filePath)) {
-        QFile::remove(filePath);
-    }
-
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qDebug() << "Error: Cannot open file" << filePath;
-        return;
-    }
-
-    QTextStream out(&file);
-    out.setEncoding(QStringConverter::Utf8);
-
-    const QStringList headers = {"Date","Open","High","Low","Close","Volume"};
-    out << headers.join(sep) << "\n";
-
-    for (historicalCSVStroke stroke : currentTable) {
-        QStringList rowData;
-        QDateTime dateTime = stroke.getDate();
-
-        if (!dateTime.isValid()) {
-            qDebug() << "Invalid QDateTime for stroke, setting to current date with 12:00:00";
-            dateTime = QDateTime(QDate::currentDate(), QTime(12, 0, 0));
-        } else {
-            QTime time = dateTime.time();
-            if (time == QTime(0, 0, 0)) {
-                qDebug() << "No time specified for" << dateTime.toString() << ", setting to 12:00:00";
-                dateTime.setTime(QTime(12, 0, 0));
-            } else {
-                qDebug() << "Time already specified:" << time.toString("HH:mm:ss");
-            }
-        }
-
-        rowData << dateTime.toString("yyyy-MM-dd HH:mm:ss");
-        rowData << QString::number(stroke.open, 'g', 17);
-        rowData << QString::number(stroke.high, 'g', 17);
-        rowData << QString::number(stroke.low, 'g', 17);
-        rowData << QString::number(stroke.close, 'g', 17);
-        rowData << QString::number(stroke.volume);
-
-        out << rowData.join(sep) << "\n";
-    }
-
-    file.close();
-    qDebug() << "Data successfully exported to" << filePath << "with separator" << sep;
+    historicalDataManager->exportCSV(currentFolderItem, dirPath);
 }
 
 void historicalWindow::importFilesClicked(bool checked) {
@@ -534,7 +452,11 @@ void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
 
         if (file.fileName().split('/').last().split('.').first() != item->text()) {
 
-            file.rename(cellDataPath.remove(oldFileName) + "/" + item->text() + ".hd");
+            if (!file.rename(cellDataPath.remove(oldFileName) + "/" + item->text() + ".hd")) {
+                messageBoxFactory::showError(nullptr, "Fail to rename symbol",
+                    "Fail to rename " + oldFileName + " reason " + file.errorString());
+                return;
+            }
         }
 
         item->setData(ItemDataPath, file.fileName());
@@ -566,13 +488,10 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
         }
 
         QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
-
         tableWidget->setData(ItemDataPath, filePath);
 
         const int rowCount = folderItemsTable->rowCount();
-
         folderItemsTable->setRowCount(rowCount + 1);
-
         folderItemsTable->setItem(rowCount, 0, tableWidget);
         folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
     }
@@ -752,8 +671,13 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
     contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
 
     const QAction *importCSVAction = contextMenu.addAction("Import csv");
-    const QAction *exportCSVAction = contextMenu.addAction("Export csv");
-    const QAction *deleteCSVAction = contextMenu.addAction("Delete csv");
+    const QAction *exportCSVAction;
+    const QAction *deleteCSVAction;
+    if (!historicalDataManager->getHistoricalData(currentFolderItem).isEmpty()) {
+
+        exportCSVAction = contextMenu.addAction("Export csv");
+        deleteCSVAction = contextMenu.addAction("Delete csv");
+    }
     const QAction *downloadCSVAction = contextMenu.addAction("Download csv");
     const QAction *deleteAction = contextMenu.addAction("Delete");
     const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
@@ -768,15 +692,38 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         folderItemsTable->removeRow( folderItemsTable->currentRow());
     } else if (selectedAction == importCSVAction) {
 
-        importFileClicked();
+        const QString fileName = QFileDialog::getOpenFileName(
+            this,
+            "Выберите файл для импорта",
+            "",
+            "CSV таблица (*.csv*)"
+        );
+
+        if (fileName.isEmpty()) return;
+
+        const bool accepted = messageBoxFactory::showAcceptWindow(this,
+        fileName.split('/').last(),
+        currentFolderItem.split('/').last());
+
+        if (accepted) {
+            historicalDataManager->importCSV(currentFolderItem, fileName);
+        }
+
     } else if (selectedAction == exportCSVAction) {
 
         exportFileClicked();
     } else if (selectedAction == deleteCSVAction) {
 
+        QFile::remove(currentFolderItem.split('.').first() + ".data");
+
         if (QFile::exists(currentFolderItem.split('.').first() + ".data")) {
 
-            QFile::remove(currentFolderItem.split('.').first() + ".data");
+            ui->tabWidget->setTabEnabled(1, true);
+            ui->tabWidget->setTabEnabled(2, true);
+        }else {
+
+            ui->tabWidget->setTabEnabled(1, false);
+            ui->tabWidget->setTabEnabled(2, false);
         }
     } else if (selectedAction == downloadCSVAction) {
         downloadCSVWindow* downloadWindow = new downloadCSVWindow(currentFolderItem.split('.').first() + ".csv");
@@ -1081,4 +1028,20 @@ void historicalWindow::onSymbolChanged(const QString& symbol) {
 
     ui->symbolDataTableWidget->setRowCount(0);
     series->clear();
+}
+
+void historicalWindow::folderItemsHeaderContextMenu(const QPoint &pos) {
+
+    if (currentFolder.isEmpty()) return;
+
+    QMenu contextMenu(this);
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
+
+    const QAction *createSymbolAction = contextMenu.addAction("Create symbol");
+    const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
+
+    if (selectedAction == createSymbolAction) {
+
+        createSymbolClicked();
+    }
 }

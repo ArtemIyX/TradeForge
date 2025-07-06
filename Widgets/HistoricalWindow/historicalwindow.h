@@ -47,7 +47,6 @@ public:
 public slots:
 
     void createSymbolClicked() const;
-    void importFileClicked();
     void exportFileClicked();
     void importFilesClicked(bool checked);
 
@@ -72,6 +71,8 @@ public slots:
     void onSymbolHistoricalDataUpdated(const QString& symbolPath);
 
     void onSymbolChanged(const QString& symbol);
+
+    void folderItemsHeaderContextMenu(const QPoint &pos);
 
 private:
     Ui::historicalWindow *ui;
@@ -105,10 +106,15 @@ private:
 
     Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);
-
     void updateTreeViewItemIcon(const QModelIndex& index) const;
-
     void drawSymbolData();
+
+
+    ///////////////////////////////
+    ///Setup widgets functs
+    ///////////////////////////////
+
+    void setupFolderItemsTable();
 };
 
 

@@ -47,6 +47,8 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
         Widgets/Terminal/terminal.h
         Widgets/Terminal/terminal.ui
         Widgets/Terminal/messageHandler.h
+        Widgets/CustomMessageBoxes/messageBoxFactory.cpp
+        Widgets/CustomMessageBoxes/messageBoxFactory.h
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -16,6 +16,7 @@
 #include <qprocess.h>
 
 #include "symboldata.h"
+#include "../CustomMessageBoxes/messageBoxFactory.h"
 
 dataManager* dataManager::m_instance = nullptr;
 
@@ -119,6 +120,7 @@ bool dataManager::createSymbol(const QString& folderPath, const QString& symbolN
     const QString filePath = folderPath + "/" + symbolName + ".hd";
     QFile file(filePath);
     if (file.exists()) {
+        qWarning() << "dataManager::createSymbol: File" + symbolName + " already exists";
         return false;
     }
 
@@ -174,11 +176,15 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
     QFile file(csvFilePath);
     QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
 
-    if (!file.exists() || !historicalData.open(QIODevice::WriteOnly)) {
+    if (!historicalData.open(QIODevice::WriteOnly)) {
+        messageBoxFactory::showError(nullptr, "Fail to import", "Fail to open symbol Error: " + historicalData.errorString());
+        qCritical() << "dataManager::importCSV: fail to open symbol file by path: " + symbolPath;
         return false;
     }
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        messageBoxFactory::showError(nullptr, "Fail to import", "Fail to open csv table Error: " + file.errorString());
+        qCritical() << "dataManager::importCSV: fail to open csv file by path: " + csvFilePath;
         return false;
     }
 
@@ -223,6 +229,9 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
     emit historicalDataUpdated(symbolPath);
     emit importDone();
 
+    messageBoxFactory::showInfo(nullptr, "Import done", file.fileName() + " succesfully imported to " +
+        " " + historicalData.fileName());
+
     return true;
 }
 
@@ -239,6 +248,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
     }
 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        messageBoxFactory::showError(nullptr, "Fail to export", "Fail to open csv file: " + file.errorString());
         return false;
     }
 
@@ -267,6 +277,9 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
     file.close();
     emit historicalDataUpdated(symbolPath);
     emit exportDone();
+
+    messageBoxFactory::showInfo(nullptr, "Export done", file.fileName() + " succesfully exported to " + exportDir);
+
     return true;
 }
 
