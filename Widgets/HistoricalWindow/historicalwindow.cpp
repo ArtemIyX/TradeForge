@@ -705,6 +705,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
             ui->tabWidget->setTabEnabled(2, false);
         }
 
+
         messageBoxFactory::showInfo(nullptr, "Delete csv succesful", QFile(currentFolderItem).fileName() + " csv deleted");
 
     } else if (selectedAction == downloadCSVAction) {
