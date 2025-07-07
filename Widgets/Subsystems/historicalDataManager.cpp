@@ -188,7 +188,7 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
         return false;
     }
 
-    emit showMessageBox(startImport);
+    bool created = messageBoxFactory::showProgressWindow(nullptr, "Importing CSV", "Importing please wait");
 
     QList<historicalCSVStroke> table;
     QTextStream in(&file);
@@ -229,8 +229,12 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
     emit historicalDataUpdated(symbolPath);
     emit importDone();
 
-    messageBoxFactory::showInfo(nullptr, "Import done", file.fileName() + " succesfully imported to " +
-        " " + historicalData.fileName());
+    if (created) {
+
+        messageBoxFactory::hideProgressWindow();
+        messageBoxFactory::showInfo(nullptr, "Import done", file.fileName() + " succesfully imported to " +
+            " " + historicalData.fileName());
+    }
 
     return true;
 }
@@ -252,7 +256,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
         return false;
     }
 
-    emit showMessageBox(startExport);
+    messageBoxFactory::showProgressWindow(nullptr, "Exporting CSV", "Exporting please wait");
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
@@ -278,6 +282,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
     emit historicalDataUpdated(symbolPath);
     emit exportDone();
 
+    messageBoxFactory::hideProgressWindow();
     messageBoxFactory::showInfo(nullptr, "Export done", file.fileName() + " succesfully exported to " + exportDir);
 
     return true;
@@ -334,7 +339,7 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
         return false;
     }
 
-    emit showMessageBox(startDownload);
+    messageBoxFactory::showProgressWindow(nullptr, "Downloading CSV", "Downloading CSV please wait");
 
     QProcess pythonCheck;
     pythonCheck.start("python", {"--version"});
@@ -376,7 +381,9 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
 
     importCSV(symbolPath, outputFilePath);
 
-    connect(this, &dataManager::historicalDataUpdated, this, &dataManager::importDownloadedCSVDone);
+    messageBoxFactory::hideProgressWindow();
+    messageBoxFactory::showInfo(nullptr, "Download done", "AAPL csv succesfully downloaded to " +
+        symbolPath.split('/').last());
 
     return true;
 }

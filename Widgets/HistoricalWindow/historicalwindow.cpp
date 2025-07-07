@@ -82,7 +82,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     model = historicalDataManager->getTreeModel();
     model->setHorizontalHeaderLabels({"Tree view"});
 
-    connect(historicalDataManager, &dataManager::showMessageBox, this, &historicalWindow::showMessageBox);
+    //connect(historicalDataManager, &dataManager::showMessageBox, this, &historicalWindow::showMessageBox);
     connect(historicalDataManager, &dataManager::historicalDataUpdated, this, &historicalWindow::onSymbolHistoricalDataUpdated);
     connect(historicalDataManager, &dataManager::currentSymbolChanged, this, &historicalWindow::onSymbolChanged);
 
@@ -165,7 +165,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     chart->addSeries(series);
     chart->setTitle("Candlestick");
 
-    auto *axisX = new QDateTimeAxis;
+    axisX = new QDateTimeAxis;
     axisX->setFormat("dd.MM.yyyy");
     axisX->setTitleText("Date");
     chart->addAxis(axisX, Qt::AlignBottom);
@@ -176,7 +176,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     axisX->setTickCount(10);
 
-    auto *axisY = new QValueAxis;
+    axisY = new QValueAxis;
     axisY->setLabelFormat("%.2f");
     axisY->setTitleText("Price");
     axisY->setRange(40, 50);
@@ -190,14 +190,13 @@ historicalWindow::historicalWindow(QWidget *parent) :
     axisY->setTitleBrush(QBrush(Qt::white));
     axisY->setLabelsColor(Qt::white);
 
-    //series->setUseOpenGL(true);
+    series->setUseOpenGL(true);
     chartView->setChart(chart);
 
     chartView->setDragMode(QGraphicsView::NoDrag);
     chartView->setInteractive(true);
 
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState | QGraphicsView::DontAdjustForAntialiasing);
+    //chartView->setOptimizationFlags(QGraphicsView::DontSavePainterState);
     chartView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
     ui->currentCSVTable->setLayout(new QVBoxLayout());
@@ -333,33 +332,6 @@ void historicalWindow::updateTreeViewItemIcon(const QModelIndex &index) const {
     }
 }
 
-
-void historicalWindow::createSymbolClicked() const {
-
-    if (currentFolder.isEmpty()) { return;}
-
-    QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
-
-    const int rowCount = folderItemsTable->rowCount();
-    folderItemsTable->setRowCount(rowCount + 1);
-    folderItemsTable->setItem(rowCount, 0, item);
-    folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
-    folderItemsTable->editItem(item);
-
-    historicalDataManager->createSymbol(currentFolder, item->text());
-}
-
-void historicalWindow::exportFileClicked() {
-
-    const QString dirPath = QFileDialog::getExistingDirectory(
-        this,
-        "Выберите папку для экспорта",
-        ""
-    );
-
-    historicalDataManager->exportCSV(currentFolderItem, dirPath);
-}
-
 void historicalWindow::importFilesClicked(bool checked) {
 
     if (!importFiles) {
@@ -433,139 +405,6 @@ void historicalWindow::searchLineEditTextChanged(const QString &arg1) const {
     }
 }
 
-void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
-
-    QString cellDataPath = item->data(ItemDataPath).toString();
-
-    if (item->text().isEmpty()) {
-        return;
-    }
-
-    if (cellDataPath.isEmpty()) {
-
-        item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
-    }else {
-
-        QFile file = QFile(cellDataPath);
-
-        const QString oldFileName = file.fileName().split('/').last();
-
-        if (file.fileName().split('/').last().split('.').first() != item->text()) {
-
-            if (!file.rename(cellDataPath.remove(oldFileName) + "/" + item->text() + ".hd")) {
-                messageBoxFactory::showError(nullptr, "Fail to rename symbol",
-                    "Fail to rename " + oldFileName + " reason " + file.errorString());
-                return;
-            }
-        }
-
-        item->setData(ItemDataPath, file.fileName());
-    }
-}
-
-void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
-
-    const QStandardItem *item = model->itemFromIndex(index);
-    if (!item) {
-        return;
-    }
-
-    folderItemsTable->setRowCount(0);
-
-    ui->createSymbolButton->setDisabled(false);
-    ui->searchSymbolLineEdit->setDisabled(false);
-    ui->importFilesButton->setDisabled(false);
-    currentFolder = item->data(ItemDataPath).toString();
-
-    QList<QString> files = historicalDataManager->setCurrentFolder(item->data(ItemDataPath).toString());
-
-    for (const QString& filePath : files) {
-
-        const QString fileName = filePath.split('/').last().split('.').first();
-
-        if (filePath.split('.').last() != "hd") {
-            continue;
-        }
-
-        QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
-        tableWidget->setData(ItemDataPath, filePath);
-
-        const int rowCount = folderItemsTable->rowCount();
-        folderItemsTable->setRowCount(rowCount + 1);
-        folderItemsTable->setItem(rowCount, 0, tableWidget);
-        folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
-    }
-}
-
-void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
-
-    const QModelIndex index = ui->symbolsTreeView->indexAt(pos);
-    if (!index.isValid()) {
-        qDebug() << "Clicked to empty space";
-        return;
-    }
-
-    QMenu contextMenu(this);
-
-    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
-
-    const QAction *addFolderAction = contextMenu.addAction("Add folder");
-    const QAction *deleteAction = contextMenu.addAction("Delete");
-
-    const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
-
-    if (selectedAction == addFolderAction) {
-
-        QStandardItem *folderItem = new QStandardItem("New folder");
-        QStandardItem *itemParent = model->itemFromIndex(ui->symbolsTreeView->indexAt(pos));
-        itemParent->appendRow({folderItem});
-        folderItem->setEditable(true);
-        folderItem->setData(itemParent->data(), ItemDataPath);
-
-        ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
-        ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
-
-        connect(ui->symbolsTreeView->itemDelegate(), Q_SIGNAL(&QAbstractItemDelegate::closeEditor), this, &historicalWindow::treeViewSubDirectoryCreated);
-
-    } else if (selectedAction == deleteAction) {
-
-        const QString itemPath = model->itemFromIndex(index)->data(ItemDataPath).toString();
-
-        QDir(itemPath).removeRecursively();
-
-        QStandardItem* itemToRemoveParent = model->itemFromIndex(index)->parent();
-
-        if (itemToRemoveParent) {
-
-            itemToRemoveParent->removeRow(model->itemFromIndex(index)->row());
-        }else {
-
-             model->removeRow(model->indexFromItem(model->itemFromIndex(index)).row());
-        }
-    }
-}
-
-void historicalWindow::treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
-
-    disconnect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, &historicalWindow::treeViewSubDirectoryCreated);
-
-    QStandardItem *folderItem = model->itemFromIndex(ui->symbolsTreeView->currentIndex());
-
-    const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
-    const QString folderPath = folderItem->data(ItemDataPath).toString() + "/" + lineEdit->text();
-    const QDir dir(folderPath);
-
-    if (!dir.exists()) {
-
-        dir.mkpath(folderPath);
-        folderItem->setData(folderPath, ItemDataPath);
-
-    }else {
-
-        model->removeRow(0, model->indexFromItem(folderItem));
-    }
-}
-
 void historicalWindow::showTreeViewHeaderContext(const QPoint &pos) {
 
     QMenu contextMenu(this);
@@ -611,6 +450,144 @@ void historicalWindow::treeViewHeaderSubDirCreated(QWidget *editor, QAbstractIte
     }
 }
 
+void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
+
+    const QModelIndex index = ui->symbolsTreeView->indexAt(pos);
+    if (!index.isValid()) {
+        qDebug() << "Clicked to empty space";
+        return;
+    }
+
+    QMenu contextMenu(this);
+
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
+
+    const QAction *addFolderAction = contextMenu.addAction("Add folder");
+    const QAction *deleteAction = contextMenu.addAction("Delete");
+
+    const QAction *selectedAction = contextMenu.exec(ui->symbolsTreeView->mapToGlobal(pos));
+
+    if (selectedAction == addFolderAction) {
+
+        QStandardItem *folderItem = new QStandardItem("New folder");
+        QStandardItem *itemParent = model->itemFromIndex(ui->symbolsTreeView->indexAt(pos));
+        itemParent->appendRow({folderItem});
+        folderItem->setEditable(true);
+        folderItem->setData(itemParent->data(), ItemDataPath);
+
+        ui->symbolsTreeView->setCurrentIndex(model->indexFromItem(folderItem));
+        ui->symbolsTreeView->edit(model->indexFromItem(folderItem));
+
+        connect(ui->symbolsTreeView->itemDelegate(), Q_SIGNAL(&QAbstractItemDelegate::closeEditor), this, &historicalWindow::treeViewSubDirectoryCreated);
+
+    } else if (selectedAction == deleteAction) {
+
+        const QString itemPath = model->itemFromIndex(index)->data(ItemDataPath).toString();
+
+        const bool bAccepted = messageBoxFactory::showAcceptWindow(nullptr, "Delete folder", "Are you sure you want to delete " +
+           itemPath.split('/').last());
+
+        if (!bAccepted) return;
+
+        QDir(itemPath).removeRecursively();
+        QStandardItem* itemToRemoveParent = model->itemFromIndex(index)->parent();
+
+        if (itemToRemoveParent) {
+
+            itemToRemoveParent->removeRow(model->itemFromIndex(index)->row());
+        }else {
+
+            model->removeRow(model->indexFromItem(model->itemFromIndex(index)).row());
+        }
+    }
+}
+
+void historicalWindow::treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint) {
+
+    disconnect(ui->symbolsTreeView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, &historicalWindow::treeViewSubDirectoryCreated);
+
+    QStandardItem *folderItem = model->itemFromIndex(ui->symbolsTreeView->currentIndex());
+
+    const QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    const QString folderPath = folderItem->data(ItemDataPath).toString() + "/" + lineEdit->text();
+    const QDir dir(folderPath);
+
+    if (!dir.exists()) {
+
+        dir.mkpath(folderPath);
+        folderItem->setData(folderPath, ItemDataPath);
+
+    }else {
+
+        model->removeRow(0, model->indexFromItem(folderItem));
+    }
+}
+
+void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
+
+    const QStandardItem *item = model->itemFromIndex(index);
+    if (!item) {
+        return;
+    }
+
+    folderItemsTable->setRowCount(0);
+
+    ui->createSymbolButton->setDisabled(false);
+    ui->searchSymbolLineEdit->setDisabled(false);
+    ui->importFilesButton->setDisabled(false);
+    currentFolder = item->data(ItemDataPath).toString();
+
+    QList<QString> files = historicalDataManager->setCurrentFolder(item->data(ItemDataPath).toString());
+
+    for (const QString& filePath : files) {
+
+        const QString fileName = filePath.split('/').last().split('.').first();
+
+        if (filePath.split('.').last() != "hd") {
+            continue;
+        }
+
+        QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
+        tableWidget->setData(ItemDataPath, filePath);
+
+        const int rowCount = folderItemsTable->rowCount();
+        folderItemsTable->setRowCount(rowCount + 1);
+        folderItemsTable->setItem(rowCount, 0, tableWidget);
+        folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+    }
+}
+
+void historicalWindow::folderItemsHeaderContextMenu(const QPoint &pos) {
+
+    if (currentFolder.isEmpty()) return;
+
+    QMenu contextMenu(this);
+    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
+
+    const QAction *createSymbolAction = contextMenu.addAction("Create symbol");
+    const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
+
+    if (selectedAction == createSymbolAction) {
+
+        createSymbol();
+    }
+}
+
+void historicalWindow::createSymbol() const {
+
+    if (currentFolder.isEmpty()) { return;}
+
+    QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
+
+    const int rowCount = folderItemsTable->rowCount();
+    folderItemsTable->setRowCount(rowCount + 1);
+    folderItemsTable->setItem(rowCount, 0, item);
+    folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+    folderItemsTable->editItem(item);
+
+    historicalDataManager->createSymbol(currentFolder, item->text());
+}
+
 void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
 
     if (!folderItemsTable->item(currentRow, 0)) {
@@ -633,33 +610,34 @@ void historicalWindow::folderItemSelected(const int currentRow, int currentColum
     bSymbolDataNeedLoad = true;
 }
 
-void historicalWindow::settingValueChanged(const int row, const int column) const {
+void historicalWindow::symbolNameAccepted(QTableWidgetItem* item) const {
 
-    QFile file = QFile(currentFolderItem);
+    QString cellDataPath = item->data(ItemDataPath).toString();
 
-    QList<symbolSettings> itemSettings;
-
-    if (!file.open(QIODevice::ReadOnly)) {
+    if (item->text().isEmpty()) {
         return;
     }
 
-    QDataStream dataStream(&file);
+    if (cellDataPath.isEmpty()) {
 
-    dataStream >> itemSettings;
+        item->setData(ItemDataPath, currentFolder + "/" + item->text() + ".hd");
+    }else {
 
-    file.close();
+        QFile file = QFile(cellDataPath);
 
-    if (!file.open(QIODevice::WriteOnly)) {
-        return;
+        const QString oldFileName = file.fileName().split('/').last();
+
+        if (file.fileName().split('/').last().split('.').first() != item->text()) {
+
+            if (!file.rename(cellDataPath.remove(oldFileName) + "/" + item->text() + ".hd")) {
+                messageBoxFactory::showError(nullptr, "Fail to rename symbol",
+                    "Fail to rename " + oldFileName + " reason " + file.errorString());
+                return;
+            }
+        }
+
+        item->setData(ItemDataPath, file.fileName());
     }
-
-    qDebug() << itemSettingsTable->item(row, column)->text();
-
-    itemSettings[row].settingValue = itemSettingsTable->item(row, column)->text();
-
-    dataStream << itemSettings;
-
-    file.close();
 }
 
 void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
@@ -690,6 +668,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
         QFile::remove(pathToData);
 
         folderItemsTable->removeRow( folderItemsTable->currentRow());
+        messageBoxFactory::showInfo(nullptr, "Delete succesful", QFile(pathToData).fileName() + " deleted");
     } else if (selectedAction == importCSVAction) {
 
         const QString fileName = QFileDialog::getOpenFileName(
@@ -711,7 +690,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
     } else if (selectedAction == exportCSVAction) {
 
-        exportFileClicked();
+        exportFile();
     } else if (selectedAction == deleteCSVAction) {
 
         QFile::remove(currentFolderItem.split('.').first() + ".data");
@@ -725,6 +704,9 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
             ui->tabWidget->setTabEnabled(1, false);
             ui->tabWidget->setTabEnabled(2, false);
         }
+
+        messageBoxFactory::showInfo(nullptr, "Delete csv succesful", QFile(currentFolderItem).fileName() + " csv deleted");
+
     } else if (selectedAction == downloadCSVAction) {
         downloadCSVWindow* downloadWindow = new downloadCSVWindow(currentFolderItem.split('.').first() + ".csv");
         downloadWindow->show();
@@ -732,7 +714,45 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
     }
 }
 
-void historicalWindow::tabBarClicked(int index) {
+void historicalWindow::exportFile() {
+
+    const QString dirPath = QFileDialog::getExistingDirectory(
+        this,
+        "Выберите папку для экспорта",
+        ""
+    );
+
+    historicalDataManager->exportCSV(currentFolderItem, dirPath);
+}
+
+void historicalWindow::settingValueChanged(const int row, const int column) const {
+
+    QFile file = QFile(currentFolderItem);
+
+    QList<symbolSettings> itemSettings;
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        messageBoxFactory::showError(nullptr, "Error opening file", "Error opening " + file.fileName() +
+            " Error: " + file.errorString());
+        return;
+    }
+
+    QDataStream dataStream(&file);
+    dataStream >> itemSettings;
+    file.close();
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        messageBoxFactory::showError(nullptr, "Error opening file", "Error opening " + file.fileName() +
+            " Error: " + file.errorString());
+        return;
+    }
+
+    itemSettings[row].settingValue = itemSettingsTable->item(row, column)->text();
+    dataStream << itemSettings;
+    file.close();
+}
+
+void historicalWindow::tabBarClicked(const int index) {
 
     if (index == 0) {
 
@@ -779,13 +799,20 @@ void historicalWindow::tabBarClicked(int index) {
 
         if (!series->sets().isEmpty()) return;
 
+        double minPrice = std::numeric_limits<double>::max();
+        double maxPrice = std::numeric_limits<double>::lowest();
+
         const symbolData* symbolData = historicalDataManager->getSymbolData();
+        QList<QCandlestickSet*> candles;
         for (historicalCSVStroke stroke : symbolData->getData()) {
 
             if (!stroke.isValid()) {
                 qDebug() << "Found not valid stroke or it first stroke";
-                return;
+                continue;
             }
+
+            minPrice = qMin(minPrice, stroke.low);
+            maxPrice = qMax(maxPrice, stroke.high);
 
             QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
             if (stroke.close >= stroke.open) {
@@ -794,50 +821,19 @@ void historicalWindow::tabBarClicked(int index) {
                 set->setPen(QPen(QColor("#e74c3c"), 0.5));
             }
 
-            series->append(set);
-        }
-    }
-}
-
-void historicalWindow::drawSymbolData() {
-
-    if (bSymbolDataNeedLoad) {
-
-        bSymbolDataNeedLoad = false;
-
-        if (!historicalDataManager->getSymbolData()) {
-
-            historicalDataManager->loadCurrentSymbolData();
+            candles.append(set);
         }
 
-        const symbolData* symbolData = historicalDataManager->getSymbolData();
-        for (historicalCSVStroke stroke : symbolData->getData()) {
+        series->append(candles);
 
-            const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
+        if (minPrice != std::numeric_limits<double>::max()) {
+            axisY->setRange(minPrice * 0.99, maxPrice * 1.01);
+        }
 
-            const int rowCount = ui->symbolDataTableWidget->rowCount();
-            ui->symbolDataTableWidget->setRowCount(rowCount + 1);
-
-            if (!stroke.isValid()) {
-                qDebug() << "Found not valid stroke or it first stroke";
-                return;
-            }
-
-            ui->symbolDataTableWidget->setItem(rowCount, 0, new QTableWidgetItem(stroke.getDate().toString(dateFormat)));
-            ui->symbolDataTableWidget->setItem(rowCount, 1, new QTableWidgetItem(QString::number(stroke.open, 'g', 17)));
-            ui->symbolDataTableWidget->setItem(rowCount, 2, new QTableWidgetItem(QString::number(stroke.high, 'g', 17)));
-            ui->symbolDataTableWidget->setItem(rowCount, 3, new QTableWidgetItem(QString::number(stroke.low, 'g', 17)));
-            ui->symbolDataTableWidget->setItem(rowCount, 4, new QTableWidgetItem(QString::number(stroke.close, 'g', 17)));
-            ui->symbolDataTableWidget->setItem(rowCount, 5, new QTableWidgetItem(QString::number(stroke.volume)));
-
-            QCandlestickSet *set = new QCandlestickSet(stroke.open, stroke.high, stroke.low, stroke.close, stroke.timestamp * 1000);
-            if (stroke.close >= stroke.open) {
-                set->setPen(QPen(QColor("#2ecc71"), 0.5));
-            } else {
-                set->setPen(QPen(QColor("#e74c3c"), 0.5));
-            }
-
-            series->append(set);
+        if (!symbolData->getData().isEmpty()) {
+            qint64 dataMinTime = symbolData->getData().first().timestamp;
+            qint64 dataMaxTime = symbolData->getData().last().timestamp;
+            axisX->setRange(QDateTime::fromSecsSinceEpoch(dataMinTime), QDateTime::fromSecsSinceEpoch(dataMaxTime));
         }
     }
 }
@@ -953,61 +949,6 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
     historicalData.close();
 }
 
-void historicalWindow::showMessageBox(eMessageBoxType messageBoxType) {
-
-    switch (messageBoxType) {
-        case startImport:
-
-            if (waitWindow) return;
-            waitWindow = new customMessageBox(this);
-            waitWindow->setWindowModality(Qt::ApplicationModal);
-            waitWindow->setWindowTitle("Please, wait");
-            waitWindow->show();
-
-            connect(historicalDataManager, &dataManager::importDone, this, &historicalWindow::removeMessageBox);
-
-            break;
-        case startExport:
-
-            if (waitWindow) return;
-            waitWindow = new customMessageBox(this);
-            waitWindow->setWindowModality(Qt::ApplicationModal);
-            waitWindow->setWindowTitle("Please, wait");
-            waitWindow->show();
-
-            connect(historicalDataManager, &dataManager::exportDone, this, &historicalWindow::removeMessageBox);
-
-            break;
-        case startDownload:
-
-            if (waitWindow) return;
-
-            waitWindow = new customMessageBox(this);
-            waitWindow->setWindowModality(Qt::ApplicationModal);
-            waitWindow->setWindowTitle("Please, wait");
-            waitWindow->show();
-
-            connect(historicalDataManager, &dataManager::yahooDataDownloaded, this, &historicalWindow::removeMessageBox);
-
-            break;
-        default:
-
-            qDebug() << "Warning historicalWindow::showMessageBox: update showMessageBox switch default code called";
-    }
-}
-
-void historicalWindow::removeMessageBox() {
-    if (waitWindow) {
-
-        waitWindow->close();
-        waitWindow = nullptr;
-
-        disconnect(historicalDataManager, &dataManager::importDone, this, &historicalWindow::removeMessageBox);
-        disconnect(historicalDataManager, &dataManager::exportDone, this, &historicalWindow::removeMessageBox);
-        disconnect(historicalDataManager, &dataManager::yahooDataDownloaded, this, &historicalWindow::removeMessageBox);
-    }
-}
-
 void historicalWindow::onSymbolHistoricalDataUpdated(const QString &symbolPath) {
 
     if (symbolPath == currentFolderItem) {
@@ -1028,20 +969,4 @@ void historicalWindow::onSymbolChanged(const QString& symbol) {
 
     ui->symbolDataTableWidget->setRowCount(0);
     series->clear();
-}
-
-void historicalWindow::folderItemsHeaderContextMenu(const QPoint &pos) {
-
-    if (currentFolder.isEmpty()) return;
-
-    QMenu contextMenu(this);
-    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
-
-    const QAction *createSymbolAction = contextMenu.addAction("Create symbol");
-    const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
-
-    if (selectedAction == createSymbolAction) {
-
-        createSymbolClicked();
-    }
 }

@@ -7,7 +7,13 @@
 #include <qabstractbutton.h>
 #include <QMessageBox>
 
+QProgressDialog* messageBoxFactory::progressDialog = nullptr;
+
 void messageBoxFactory::showInfo(QWidget *parent, const QString &title, const QString &message) {
+
+    if (progressDialog) {
+        return;
+    }
     QMessageBox msgBox(parent);
     msgBox.setWindowTitle(title);
     msgBox.setText(message);
@@ -38,13 +44,27 @@ void messageBoxFactory::showError(QWidget *parent, const QString &title, const Q
 }
 
 QProgressDialog * messageBoxFactory::showProgressWindow(QWidget *parent, const QString &title, const QString &message) {
-    QProgressDialog* progress = new QProgressDialog(message, QString(), 0, 0, parent);
-    progress->setWindowTitle(title);
-    progress->setWindowModality(Qt::WindowModal);
-    progress->setCancelButton(nullptr);
-    progress->setMinimumDuration(0);
-    progress->setValue(0);
-    return progress;
+    if (progressDialog) {
+        return nullptr;
+    }
+    progressDialog = new QProgressDialog(message, QString(), 0, 1000000, parent);
+    progressDialog->setWindowTitle(title);
+    progressDialog->setWindowModality(Qt::WindowModal);
+    progressDialog->setCancelButton(nullptr);
+    progressDialog->setMinimumDuration(0);
+    progressDialog->setValue(0);
+    progressDialog->show();
+    return progressDialog;
+}
+
+void messageBoxFactory::hideProgressWindow() {
+    if (!progressDialog) {
+        qWarning() << "Fail to hide progress window";
+        return;
+    }
+    progressDialog->close();
+    progressDialog->deleteLater();
+    progressDialog = nullptr;
 }
 
 bool messageBoxFactory::showAcceptWindow(QWidget *parent, const QString &fileName, const QString &toolName) {

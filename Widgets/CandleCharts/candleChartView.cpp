@@ -16,25 +16,25 @@ candleChartView::candleChartView(QWidget *parent) : QChartView(parent) {
 }
 
 void candleChartView::wheelEvent(QWheelEvent *event) {
-    const double scaleFactor = 1.15;
+    constexpr double scaleFactor = 1.15;
 
-    QRectF plotArea = chart()->plotArea();
-    QRectF yAxisArea(plotArea.left() - 50, plotArea.top(), 50, plotArea.height());
+    const QRectF plotArea = chart()->plotArea();
+    const QRectF yAxisArea(plotArea.left() - 50, plotArea.top(), 50, plotArea.height());
 
-    QPointF cursorPos = event->position();
+    const QPointF cursorPos = event->position();
     if (yAxisArea.contains(cursorPos)) {
         QValueAxis *axisY = qobject_cast<QValueAxis*>(chart()->axisY());
         if (axisY) {
-            qreal currentMin = axisY->min();
-            qreal currentMax = axisY->max();
-            qreal range = currentMax - currentMin;
-            qreal center = (currentMax + currentMin) / 2;
+            const qreal currentMin = axisY->min();
+            const qreal currentMax = axisY->max();
+            const qreal range = currentMax - currentMin;
+            const qreal center = (currentMax + currentMin) / 2;
 
             qreal scaleFactor = (event->angleDelta().y() > 0) ? 0.9 : 1.1;
-            qreal newRange = range * scaleFactor;
+            const qreal newRange = range * scaleFactor;
 
-            qreal newMin = center - newRange / 2;
-            qreal newMax = center + newRange / 2;
+            const qreal newMin = center - newRange / 2;
+            const qreal newMax = center + newRange / 2;
 
             if (newRange > 0.1 && newRange < 1000) {
                 axisY->setRange(newMin, newMax);
@@ -63,7 +63,7 @@ void candleChartView::mousePressEvent(QMouseEvent *event) {
 
 void candleChartView::mouseMoveEvent(QMouseEvent *event) {
     if (m_isDragging && (event->buttons() & Qt::LeftButton)) {
-        QPoint delta = event->pos() - m_lastPanPoint;
+        const QPoint delta = event->pos() - m_lastPanPoint;
         chart()->scroll(-delta.x(), delta.y());
         m_lastPanPoint = event->pos();
     }

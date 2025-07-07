@@ -9,10 +9,13 @@
 #include <QDialog>
 #include <QDir>
 #include <QPointer>
+#include <QValueAxis>
 
 #include "Components/customStyledItemDelegate.h"
 #include "SymbolStructs.cuh"
 
+class QDateTimeAxis;
+class QStandardItemModel;
 class symbolData;
 class customMessageBox;
 enum eMessageBoxType : int;
@@ -22,11 +25,11 @@ class QChartView;
 class historicalWindowTable;
 class QTableWidgetItem;
 
+enum eMessageBoxType : int;
 enum historicalWindowItemsData {
     ItemDataPath = Qt::UserRole + 1
 };
 
-class QStandardItemModel;
 QT_BEGIN_NAMESPACE
 namespace Ui { class historicalWindow; }
 QT_END_NAMESPACE
@@ -38,82 +41,78 @@ public:
     explicit historicalWindow(QWidget *parent = nullptr);
     ~historicalWindow() override;
 
-    void loadTreeViewItems() const;
-
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
-
-public slots:
-
-    void createSymbolClicked() const;
-    void exportFileClicked();
-    void importFilesClicked(bool checked);
-
-    void searchLineEditTextChanged(const QString &arg1) const;
-
-    void symbolNameAccepted(QTableWidgetItem* item) const;
-    void treeViewItemClicked(const QModelIndex &index);
-    void showTreeViewContextMenu(const QPoint &pos);
-    void treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
-    void showTreeViewHeaderContext(const QPoint &pos);
-    void treeViewHeaderSubDirCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
-    void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
-    void settingValueChanged(int row, int column) const;
-    void showFolderItemsContextMenu(const QPoint &pos);
-    void tabBarClicked(int index);
-
-    void currentTableDataChanged(const QTableWidgetItem *item);
-
-    void showMessageBox(eMessageBoxType messageBoxType);
-    void removeMessageBox();
-
-    void onSymbolHistoricalDataUpdated(const QString& symbolPath);
-
-    void onSymbolChanged(const QString& symbol);
-
-    void folderItemsHeaderContextMenu(const QPoint &pos);
-
 private:
+    // UI-related members
     Ui::historicalWindow *ui;
-    dataManager* historicalDataManager = nullptr;
-    customMessageBox* waitWindow = nullptr;
-
-    historicalWindowTable *itemSettingsTable;
     historicalWindowTable *folderItemsTable;
-
+    historicalWindowTable *itemSettingsTable;
     QPointer<importFilesWIndow> importFiles;
-
-    QString dataFolder = QDir::current().path() + "/data";
-
-    QStandardItemModel *model;
-
-    QString currentFolder = "";
-    QString currentFolderItem = "";
-
-    QList<historicalCSVStroke> currentTable;
-
-    const int RESIZE_MARGIN = 5;
-    bool resizing = false;
-    QPointF dragStartPos;
-    Qt::Edges resizeEdges;
-
     QChartView *chartView;
     QCandlestickSeries *series;
     QChart *chart;
+    QValueAxis *axisY;
+    QDateTimeAxis *axisX;
 
+    // Data-related members
+    dataManager *historicalDataManager = nullptr;
+    QStandardItemModel *model;
+    QString dataFolder = QDir::current().path() + "/data";
+    QString currentFolder = "";
+    QString currentFolderItem = "";
+    QList<historicalCSVStroke> currentTable;
+
+    // State-related members
     bool bSymbolDataNeedLoad = false;
+    bool resizing = false;
+    const int RESIZE_MARGIN = 5;
+    QPointF dragStartPos;
+    Qt::Edges resizeEdges;
 
+public:
+    // Public methods
+    void loadTreeViewItems() const;
+
+protected:
+    // Event handlers
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+
+public slots:
+    // UI interaction slots
+    void createSymbol() const;
+    void exportFile();
+    void importFilesClicked(bool checked);
+    void searchLineEditTextChanged(const QString &arg1) const;
+    void symbolNameAccepted(QTableWidgetItem *item) const;
+    void tabBarClicked(int index);
+
+    // Tree view slots
+    void showTreeViewContextMenu(const QPoint &pos);
+    void showTreeViewHeaderContext(const QPoint &pos);
+    void treeViewHeaderSubDirCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
+    void treeViewItemClicked(const QModelIndex &index);
+    void treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
+
+    // Table and folder slots
+    void currentTableDataChanged(const QTableWidgetItem *item);
+    void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
+    void folderItemsHeaderContextMenu(const QPoint &pos);
+    void settingValueChanged(int row, int column) const;
+    void showFolderItemsContextMenu(const QPoint &pos);
+
+    // Data update slots
+    void onSymbolChanged(const QString &symbol);
+    void onSymbolHistoricalDataUpdated(const QString &symbolPath);
+
+private:
+    // Helper functions
+    void drawSymbolData();
     Qt::Edges edgesAt(const QPoint &pos) const;
     void updateCursorShape(const QPoint &pos);
-    void updateTreeViewItemIcon(const QModelIndex& index) const;
-    void drawSymbolData();
+    void updateTreeViewItemIcon(const QModelIndex &index) const;
 
-
-    ///////////////////////////////
-    ///Setup widgets functs
-    ///////////////////////////////
-
+    // Setup functions
     void setupFolderItemsTable();
 };
 
