@@ -843,7 +843,7 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
     const int currentColumn = ui->symbolDataTableWidget->column(item);
     const int currentRow = ui->symbolDataTableWidget->row(item);
 
-    historicalCSVStroke stroke = currentTable[currentRow];
+    historicalCSVStroke stroke = historicalDataManager->getSymbolData()->getData()[currentRow];
 
     const QString dateFormat = "yyyy-MM-dd HH:mm:ss";
     QDateTime date;
@@ -939,9 +939,10 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
         return;
     }
 
-    currentTable[currentRow] = stroke;
+    auto currentTableLocal = historicalDataManager->getSymbolData()->getData();
+    currentTableLocal[currentRow] = stroke;
 
-    for (historicalCSVStroke writeStroke : currentTable) {
+    for (historicalCSVStroke writeStroke : currentTableLocal) {
 
         historicalData.write(reinterpret_cast<const char*>(&writeStroke), sizeof(historicalCSVStroke));
     }
