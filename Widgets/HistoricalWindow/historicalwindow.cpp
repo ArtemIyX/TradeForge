@@ -127,8 +127,8 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     connect(itemSettingsTable, Q_SIGNAL(&historicalWindowTable::cellEditingFinished), this, &historicalWindow::settingValueChanged);
 
-    folderItemsTable->setColumnCount(2);
-    folderItemsTable->setHorizontalHeaderLabels({"Symbol","Description" });
+    folderItemsTable->setColumnCount(1);
+    folderItemsTable->setHorizontalHeaderLabels({"Symbol"});
     folderItemsTable->setItemDelegate(new tableSymbolsStyledDelegate());
     folderItemsTable->verticalHeader()->setVisible(false);
     folderItemsTable->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -705,7 +705,6 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
             ui->tabWidget->setTabEnabled(2, false);
         }
 
-
         messageBoxFactory::showInfo(nullptr, "Delete csv succesful", QFile(currentFolderItem).fileName() + " csv deleted");
 
     } else if (selectedAction == downloadCSVAction) {
@@ -970,4 +969,40 @@ void historicalWindow::onSymbolChanged(const QString& symbol) {
 
     ui->symbolDataTableWidget->setRowCount(0);
     series->clear();
+
+    QFile file = QFile(symbol);
+
+    QList<symbolSettings> itemSettings;
+
+    if (file.open(QIODevice::ReadOnly)) {
+        QDataStream dataStream(&file);
+
+        dataStream >> itemSettings;
+
+        file.close();
+
+        if (itemSettings.isEmpty()) {
+            itemSettings = QList<symbolSettings>{
+            {"ticker", "EURUSD"},
+            {"description", "EUR/USD"},
+            {"contract_size", "1"},
+            {"units", "Share(s)"},
+            {"min_volume", 1},
+            {"max_volume", 100000000},
+            {"volume_step", 0.01},
+            {"min_tick", 0.00001},
+            {"leverage", 0.05},
+            {"trade_mode", "full"}
+            };
+        }
+    }
+
+    itemSettingsTable->setRowCount(static_cast<int>(itemSettings.size()));
+
+    for (int i = 0; i < itemSettings.size(); ++i) {
+
+        itemSettingsTable->setItem(i, 0, new QTableWidgetItem(itemSettings[i].settingName));
+
+        itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
+    }
 }
