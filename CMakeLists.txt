@@ -8,7 +8,7 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Charts Concurrent)
 
-qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION
+qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION WIN32
         main.cpp
         resources/resources.qrc
         Widgets/mainwindow.cpp
