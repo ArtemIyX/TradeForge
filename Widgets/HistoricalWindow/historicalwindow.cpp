@@ -35,7 +35,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     historicalDataManager = dataManager::instance();
 
-    connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbolClicked()));
+    connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbol()));
     connect(ui->importFilesButton, Q_SIGNAL(QPushButton::clicked), this, &historicalWindow::importFilesClicked);
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
@@ -93,6 +93,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->symbolsTreeView->setModel(model);
     ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
 
+    ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->symbolsTreeView->header(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
             this, &historicalWindow::showTreeViewHeaderContext);
 
@@ -340,6 +341,32 @@ void historicalWindow::importFilesClicked(bool checked) {
         importFiles->currentFolder = currentFolder;
         importFiles->setModal(true);
         importFiles->show();
+        connect(importFiles, &importFilesWIndow::importFinished, this, [this]() {
+
+            folderItemsTable->setRowCount(0);\
+            QList<QString> files = historicalDataManager->setCurrentFolder(currentFolder);
+            ui->tabWidget->setTabEnabled(1, false);
+            ui->tabWidget->setTabEnabled(2, false);
+            itemSettingsTable->setRowCount(0);
+
+            for (const QString& filePath : files) {
+
+                const QString fileName = filePath.split('/').last().split('.').first();
+
+                if (filePath.split('.').last() != "hd") {
+                    continue;
+                }
+
+                QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
+                tableWidget->setData(ItemDataPath, filePath);
+
+                const int rowCount = folderItemsTable->rowCount();
+                folderItemsTable->setRowCount(rowCount + 1);
+                folderItemsTable->setItem(rowCount, 0, tableWidget);
+                folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
+            }
+
+        });
     }
 }
 
@@ -577,7 +604,24 @@ void historicalWindow::createSymbol() const {
 
     if (currentFolder.isEmpty()) { return;}
 
-    QTableWidgetItem *item = new QTableWidgetItem("New Symbol");
+    QDirIterator it(currentFolder, QDir::Files);
+
+    int i = -1;
+    QString itemAdditionalName = "";
+
+    while (it.hasNext()) {
+        it.next();
+        it.fileName();
+
+        if (it.fileName().split('.').last() != "hd") { continue; }
+
+        if (it.fileName() == "New Symbol" + itemAdditionalName + ".hd") {
+            i++;
+            itemAdditionalName = " " + QString::number(i);
+        }
+    }
+
+    QTableWidgetItem *item = new QTableWidgetItem("New Symbol" + itemAdditionalName);
 
     const int rowCount = folderItemsTable->rowCount();
     folderItemsTable->setRowCount(rowCount + 1);
@@ -604,6 +648,7 @@ void historicalWindow::folderItemSelected(const int currentRow, int currentColum
 
         ui->tabWidget->setTabEnabled(1, false);
         ui->tabWidget->setTabEnabled(2, false);
+        qDebug() << currentFolderItem.split('.').first() + ".data not exist";
     }
 
     historicalDataManager->setCurrentSymbol(currentFolderItem);
@@ -688,10 +733,10 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
             historicalDataManager->importCSV(currentFolderItem, fileName);
         }
 
-    } else if (selectedAction == exportCSVAction) {
+    } else if (selectedAction == exportCSVAction and !historicalDataManager->getHistoricalData(currentFolderItem).isEmpty()) {
 
         exportFile();
-    } else if (selectedAction == deleteCSVAction) {
+    } else if (selectedAction == deleteCSVAction and !historicalDataManager->getHistoricalData(currentFolderItem).isEmpty()) {
 
         QFile::remove(currentFolderItem.split('.').first() + ".data");
 

@@ -78,7 +78,7 @@ find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${WINDEPLOYQT_EXECUTABLE}
-        --verbose 2
+        --verbose 1
         --no-translations
         --no-system-d3d-compiler
         --no-opengl-sw
@@ -86,13 +86,45 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         $<TARGET_FILE:${PROJECT_NAME}>
 )
 
-set(PythonFiles
-        ${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py
-)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Utils")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py" "${CMAKE_BINARY_DIR}/Utils/YahooDownloader.py" COPYONLY)
+
+set(RELEASE_DIR "${CMAKE_BINARY_DIR}/release")
+set(RELEASE_BIN_DIR "${RELEASE_DIR}/bin")
+set(RELEASE_RESOURCES_DIR "${RELEASE_DIR}/resources")
+set(RELEASE_UTILS_DIR "${RELEASE_DIR}/utils")
+
+file(MAKE_DIRECTORY "${RELEASE_DIR}")
+file(MAKE_DIRECTORY "${RELEASE_BIN_DIR}")
+file(MAKE_DIRECTORY "${RELEASE_RESOURCES_DIR}")
+file(MAKE_DIRECTORY "${RELEASE_UTILS_DIR}")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PythonFiles}
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>" "Utils/"
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "$<TARGET_FILE:${PROJECT_NAME}>"
+        "${RELEASE_BIN_DIR}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
+        COMMENT "Copying executable to release directory"
+)
+
+file(GLOB RESOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/*")
+foreach(RESOURCE_FILE ${RESOURCE_FILES})
+    get_filename_component(FILE_NAME ${RESOURCE_FILE} NAME)
+    configure_file("${RESOURCE_FILE}" "${RELEASE_RESOURCES_DIR}/${FILE_NAME}" COPYONLY)
+endforeach()
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py" "${RELEASE_UTILS_DIR}/YahooDownloader.py" COPYONLY)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${WINDEPLOYQT_EXECUTABLE}
+        --verbose 1
+        --no-translations
+        --no-system-d3d-compiler
+        --no-opengl-sw
+        --compiler-runtime
+        --dir "${RELEASE_BIN_DIR}"
+        "$<TARGET_FILE:${PROJECT_NAME}>"
+        COMMENT "Deploying Qt DLLs and plugins to ${RELEASE_BIN_DIR}"
+        DEPENDS ${PROJECT_NAME}
 )
 
 qt_generate_deploy_app_script(

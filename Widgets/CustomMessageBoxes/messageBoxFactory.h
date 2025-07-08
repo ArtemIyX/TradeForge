@@ -19,7 +19,7 @@ public:
 
     static bool showAcceptWindow(QWidget* parent, const QString& fileName, const QString& toolName);
 
-    static QProgressDialog* showProgressWindow(QWidget* parent, const QString& title, const QString& message);
+    static QProgressDialog* showProgressWindow(QWidget* parent, const QString& title, const QString& text);
     static void hideProgressWindow();
 
     static QProgressDialog* progressDialog;

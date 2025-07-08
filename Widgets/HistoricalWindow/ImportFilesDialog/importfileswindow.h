@@ -33,8 +33,10 @@ public slots:
     void cancelImport(bool checked);
 
     void importFileDeleted(const fileToImport* widget);
-
     void settingsTableChanged(const QTableWidgetItem *item);
+
+signals:
+    void importFinished();
 
 private:
     Ui::importFilesWIndow *ui;

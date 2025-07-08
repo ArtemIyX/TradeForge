@@ -12,6 +12,7 @@
 #include "ui_importFilesWIndow.h"
 #include "../../Subsystems/historicalDataManager.h"
 #include "customTitleBar.h"
+#include "../Components/customStyledItemDelegate.h"
 
 importFilesWIndow::importFilesWIndow(QWidget *parent) :
     QDialog(parent), ui(new Ui::importFilesWIndow) {
@@ -26,6 +27,8 @@ importFilesWIndow::importFilesWIndow(QWidget *parent) :
     connect(ui->cancelImportButton, Q_SIGNAL(&QPushButton::clicked), this, &importFilesWIndow::cancelImport);
 
     connect(ui->filesSettingsTable, &QTableWidget::itemChanged, this, &importFilesWIndow::settingsTableChanged);
+
+    ui->filesSettingsTable->setItemDelegate(new customStyledItemDelegate);
 
     filesToImportScrollLayout = new QVBoxLayout();
     ui->filesToImportScroll->setLayout(filesToImportScrollLayout);
@@ -75,7 +78,7 @@ void importFilesWIndow::addFilesToImport(bool checked) {
 
         if (currentFiles.contains(file)) continue;
 
-        fileToImport* widget = new fileToImport(file, this);
+        fileToImport* widget = new fileToImport(file);
 
         filesToImportScrollLayout->addWidget(widget);
         currentFiles.append(file);
@@ -104,6 +107,7 @@ void importFilesWIndow::settingsTableChanged(const QTableWidgetItem *item) {
 void importFilesWIndow::startImport(bool checked) {
 
     dataManager::instance()->importFiles(currentFiles, currentFolder, currentFilesSettings);
+    emit importFinished();
     deleteLater();
 }
 

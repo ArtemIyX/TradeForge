@@ -18,7 +18,7 @@ void messageBoxFactory::showInfo(QWidget *parent, const QString &title, const QS
     msgBox.setWindowTitle(title);
     msgBox.setText(message);
     msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("ОК");
+    msgBox.button(QMessageBox::Ok)->setText("Ok");
     msgBox.setIcon(QMessageBox::Information);
     msgBox.exec();
 }
@@ -28,7 +28,7 @@ void messageBoxFactory::showWarning(QWidget *parent, const QString &title, const
     msgBox.setWindowTitle(title);
     msgBox.setText(message);
     msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("ОК");
+    msgBox.button(QMessageBox::Ok)->setText("Ok");
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.exec();
 }
@@ -38,7 +38,7 @@ void messageBoxFactory::showError(QWidget *parent, const QString &title, const Q
     msgBox.setWindowTitle(title);
     msgBox.setText(message);
     msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("ОК");
+    msgBox.button(QMessageBox::Ok)->setText("Ok");
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.exec();
 }
@@ -67,17 +67,17 @@ void messageBoxFactory::hideProgressWindow() {
     progressDialog = nullptr;
 }
 
-bool messageBoxFactory::showAcceptWindow(QWidget *parent, const QString &fileName, const QString &toolName) {
+bool messageBoxFactory::showAcceptWindow(QWidget *parent, const QString &fileName, const QString &text) {
 
     QMessageBox msgBox(parent);
-    msgBox.setWindowTitle("Подтверждение действия");
-    msgBox.setText(QString("Вы уверены, что хотите импортировать файл \"%1\" в инструмент \"%2\"?").arg(fileName).arg(toolName));
+    msgBox.setWindowTitle("Confirmation of action");
+    msgBox.setText(text);
     msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     msgBox.setDefaultButton(QMessageBox::No);
     msgBox.setIcon(QMessageBox::Question);
 
-    msgBox.button(QMessageBox::Yes)->setText("Да");
-    msgBox.button(QMessageBox::No)->setText("Нет");
+    msgBox.button(QMessageBox::Yes)->setText("Yes");
+    msgBox.button(QMessageBox::No)->setText("No");
 
     return msgBox.exec() == QMessageBox::Yes;
 }
