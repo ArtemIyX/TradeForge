@@ -14,7 +14,7 @@ inline QString logPath = QDir::currentPath() + "/logs/TradeForgeLog.log";
 
 inline void createLog() {
 
-    QDir().mkdir(QDir::currentPath() + "/logs");
+    QDir().mkpath(QDir::currentPath() + "/logs");
     QFile file(logPath);
     file.open(QIODevice::WriteOnly | QIODevice::Truncate);
     file.close();
@@ -60,14 +60,14 @@ inline void createLogBackup() {
 
     const QString timestamp = QDateTime::currentDateTime().toString("yyyy.MM.dd-hh.mm.ss");
 
-    QFileInfo fileInfo(logPath);
-    QString backupFilePath = QString("%1/%2-%3.%4")
+    const QFileInfo fileInfo(logPath);
+    const QString backupFilePath = QString("%1/%2-%3.%4")
                             .arg(fileInfo.absolutePath())
                             .arg(fileInfo.baseName())
                             .arg(timestamp)
                             .arg(fileInfo.completeSuffix());
 
-    QFile originalFile(logPath);
+    const QFile originalFile(logPath);
     if (originalFile.exists()) {
         if (!QFile::copy(logPath, backupFilePath)) {
             qDebug() << "Failed to create backup of" << logPath << "to" << backupFilePath;

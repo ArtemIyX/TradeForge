@@ -9,8 +9,10 @@
 void customStyledItemDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const {
 
     QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
-    if (lineEdit)
+    if (lineEdit) {
         lineEdit->setText(index.data().toString());
+        lineEdit->setStyleSheet("color: rgb(255, 255, 255); border: none; background: #333333;");
+    }
 }
 
 void customStyledItemDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const {

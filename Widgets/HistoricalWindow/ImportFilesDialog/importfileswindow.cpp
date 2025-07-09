@@ -13,6 +13,7 @@
 #include "../../Subsystems/historicalDataManager.h"
 #include "customTitleBar.h"
 #include "../Components/customStyledItemDelegate.h"
+#include "../Components/tableSymbolsStyledDelegate.h"
 
 importFilesWIndow::importFilesWIndow(QWidget *parent) :
     QDialog(parent), ui(new Ui::importFilesWIndow) {
@@ -28,7 +29,7 @@ importFilesWIndow::importFilesWIndow(QWidget *parent) :
 
     connect(ui->filesSettingsTable, &QTableWidget::itemChanged, this, &importFilesWIndow::settingsTableChanged);
 
-    ui->filesSettingsTable->setItemDelegate(new customStyledItemDelegate);
+    ui->filesSettingsTable->setItemDelegate(new tableSymbolsStyledDelegate);
 
     filesToImportScrollLayout = new QVBoxLayout();
     ui->filesToImportScroll->setLayout(filesToImportScrollLayout);

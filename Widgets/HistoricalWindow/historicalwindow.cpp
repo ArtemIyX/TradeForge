@@ -522,17 +522,15 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
     ui->importFilesButton->setDisabled(false);
     currentFolder = item->data(ItemDataPath).toString();
 
-    QList<QString> files = historicalDataManager->setCurrentFolder(item->data(ItemDataPath).toString());
+    QList<QString> files = historicalDataManager->setCurrentFolder(currentFolder);
 
     for (const QString& filePath : files) {
 
-        const QString fileName = filePath.split('/').last().split('.').first();
-
-        if (filePath.split('.').last() != "hd") {
+        if (QFileInfo(QFile(filePath)).suffix() != "hd") {
             continue;
         }
 
-        QTableWidgetItem *tableWidget= new QTableWidgetItem(fileName);
+        QTableWidgetItem *tableWidget= new QTableWidgetItem(QFile(filePath).fileName());
         tableWidget->setData(ItemDataPath, filePath);
 
         const int rowCount = folderItemsTable->rowCount();
@@ -1007,6 +1005,12 @@ void historicalWindow::onSymbolChanged(const QString& symbol) {
 
         itemSettingsTable->setItem(i, 0, new QTableWidgetItem(itemSettings[i].settingName));
 
-        itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
+        if (itemSettings[i].settingValue.toDouble()) {
+            itemSettingsTable->setItem(i, 1, new QTableWidgetItem(
+                QString::number(itemSettings[i].settingValue.toDouble(), 'f', 6)));
+
+        }else {
+            itemSettingsTable->setItem(i, 1, new QTableWidgetItem(itemSettings[i].settingValue.toString()));
+        }
     }
 }
