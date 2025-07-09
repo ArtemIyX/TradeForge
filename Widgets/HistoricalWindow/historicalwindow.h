@@ -88,7 +88,6 @@ public slots:
     void treeViewItemClicked(const QModelIndex &index);
     void treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
 
-    // Table and folder slots
     void currentTableDataChanged(const QTableWidgetItem *item);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void folderItemsHeaderContextMenu(const QPoint &pos);

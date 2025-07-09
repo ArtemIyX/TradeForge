@@ -8,6 +8,43 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Charts Concurrent)
 
+set(VERSION_FILE "${CMAKE_SOURCE_DIR}/version.txt")
+
+function(increment_version)
+    if(EXISTS ${VERSION_FILE})
+        file(READ ${VERSION_FILE} CURRENT_VERSION)
+
+        string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${CURRENT_VERSION})
+        set(MAJOR ${CMAKE_MATCH_1})
+        set(MINOR ${CMAKE_MATCH_2})
+        set(PATCH ${CMAKE_MATCH_3})
+
+        math(EXPR NEW_PATCH "${PATCH} + 1")
+
+        set(NEW_VERSION "${MAJOR}.${MINOR}.${NEW_PATCH}")
+    else()
+        set(NEW_VERSION "1.0.0")
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        file(WRITE ${VERSION_FILE} ${NEW_VERSION})
+        message(STATUS "Version incremented to: ${NEW_VERSION}")
+    endif()
+
+    set(PROJECT_VERSION ${NEW_VERSION} PARENT_SCOPE)
+endfunction()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    increment_version()
+else()
+    if(EXISTS ${VERSION_FILE})
+        file(READ ${VERSION_FILE} PROJECT_VERSION)
+    else()
+        set(PROJECT_VERSION "1.0.0")
+    endif()
+endif()
+
+
 qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION WIN32
         main.cpp
         resources/resources.qrc
@@ -90,7 +127,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Utils")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py" "${CMAKE_BINARY_DIR}/Utils/YahooDownloader.py" COPYONLY)
 
-set(RELEASE_DIR "${CMAKE_BINARY_DIR}/release")
+set(RELEASE_DIR "${CMAKE_BINARY_DIR}/TradeForge ${PROJECT_VERSION}")
 set(RELEASE_BIN_DIR "${RELEASE_DIR}/bin")
 set(RELEASE_RESOURCES_DIR "${RELEASE_DIR}/resources")
 set(RELEASE_UTILS_DIR "${RELEASE_DIR}/utils")
@@ -129,7 +166,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 )
 
 qt_generate_deploy_app_script(
-    TARGET TradeForge
+    TARGET ${PROJECT_NAME}
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
