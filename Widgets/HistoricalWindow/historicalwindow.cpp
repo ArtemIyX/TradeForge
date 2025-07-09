@@ -526,11 +526,11 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
 
     for (const QString& filePath : files) {
 
-        if (QFileInfo(QFile(filePath)).suffix() != "hd") {
+        if (!filePath.endsWith(".hd")) {
             continue;
         }
 
-        QTableWidgetItem *tableWidget= new QTableWidgetItem(QFile(filePath).fileName());
+        QTableWidgetItem *tableWidget= new QTableWidgetItem(QFileInfo(filePath).baseName());
         tableWidget->setData(ItemDataPath, filePath);
 
         const int rowCount = folderItemsTable->rowCount();
