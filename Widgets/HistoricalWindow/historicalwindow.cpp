@@ -19,7 +19,7 @@
 #include "../Subsystems/symboldata.h"
 #include "../TitleBar/customTitleBar.h"
 #include "Components/tableSymbolsStyledDelegate.h"
-#include "CustomMessageBox/custommessagebox.h"
+#include "Data/e_HistoricalWindowItemData.h"
 #include "CustomTable/historicatlWindowTable.h"
 #include "Data/SymbolStructs.cuh"
 #include "DownloadCSVWindow/downloadcsvwindow.h"
@@ -81,6 +81,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     model = historicalDataManager->getTreeModel();
     model->setHorizontalHeaderLabels({"Tree view"});
+    ui->symbolsTreeView->setModel(model);
 
     //connect(historicalDataManager, &dataManager::showMessageBox, this, &historicalWindow::showMessageBox);
     connect(historicalDataManager, &dataManager::historicalDataUpdated, this, &historicalWindow::onSymbolHistoricalDataUpdated);
@@ -140,8 +141,6 @@ historicalWindow::historicalWindow(QWidget *parent) :
         this, &historicalWindow::showFolderItemsContextMenu);
 
     connect(folderItemsTable, Q_SIGNAL(&QTableWidget::currentCellChanged), this, &historicalWindow::folderItemSelected);
-
-    loadTreeViewItems();
 
     connect(folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
 
@@ -215,47 +214,6 @@ void historicalWindow::setupFolderItemsTable() {
     folderItemsTable->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(folderItemsTable->horizontalHeader(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
         this, &historicalWindow::folderItemsHeaderContextMenu);
-}
-
-void historicalWindow::loadTreeViewItems() const {
-
-    if (!QDir(dataFolder).exists()) {
-        QDir(dataFolder).mkdir(dataFolder);
-    }
-
-    QDirIterator it(dataFolder, QDir::Dirs | QDir::NoDotAndDotDot,
-                       QDirIterator::Subdirectories);
-
-    while (it.hasNext()) {
-        QString path = it.next();
-        QFileInfo info = it.fileInfo();
-
-        QString relativePath = QDir(dataFolder).relativeFilePath(info.absoluteFilePath());
-        QStringList parts = relativePath.split("/", Qt::SkipEmptyParts);
-
-        QStandardItem* current = nullptr;
-        for (const auto & part : parts) {
-            QStandardItem* parentItem = current ? current : model->invisibleRootItem();
-            bool found = false;
-
-            for (int row = 0; row < parentItem->rowCount(); ++row) {
-                QStandardItem* child = parentItem->child(row);
-                if (child->text() == part) {
-                    current = child;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                QStandardItem* newItem = new QStandardItem(part);
-                newItem->setData(path, ItemDataPath);
-                parentItem->appendRow(newItem);
-                current = newItem;
-                updateTreeViewItemIcon(model->indexFromItem(newItem));
-            }
-        }
-    }
 }
 
 void historicalWindow::mousePressEvent(QMouseEvent *event) {

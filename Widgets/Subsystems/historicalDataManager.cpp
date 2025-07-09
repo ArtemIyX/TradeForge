@@ -14,7 +14,7 @@
 #include <QtConcurrent>
 #include <QMessageBox>
 #include <qprocess.h>
-
+#include "e_HistoricalWindowItemData.h"
 #include "symboldata.h"
 #include "../CustomMessageBoxes/messageBoxFactory.h"
 
@@ -29,6 +29,7 @@ dataManager* dataManager::instance() {
 
 dataManager::dataManager(QObject* parent) : QObject(parent), treeModel(new QStandardItemModel(this)) {
     treeModel->setHorizontalHeaderLabels({"Tree view"});
+    loadTreeViewItems();
 }
 
 dataManager::~dataManager() {
@@ -366,7 +367,7 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
     };
 
     process.start("python", arguments);
-    process.waitForFinished(-1); // Wait indefinitely for completion
+    process.waitForFinished(-1);
 
     const bool success = (process.exitCode() == 0);
     if (!success) {
@@ -380,6 +381,7 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
     const QString symbolPath = QFileInfo(outputFilePath).absolutePath() + "/" + QFileInfo(outputFilePath).fileName().split('.').first() + ".hd";
 
     importCSV(symbolPath, outputFilePath);
+    QFile::remove(outputFilePath);
 
     messageBoxFactory::hideProgressWindow();
     messageBoxFactory::showInfo(nullptr, "Download done", "AAPL csv succesfully downloaded to " +
@@ -516,29 +518,39 @@ bool dataManager::loadCurrentSymbolData() {
 }
 
 void dataManager::loadTreeViewItems() {
+
+    if (!QDir(dataFolder).exists()) {
+        QDir(dataFolder).mkdir(dataFolder);
+    }
+
     treeModel->clear();
     treeModel->setHorizontalHeaderLabels({"Tree view"});
     QDirIterator it(dataFolder, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString path = it.next();
         QFileInfo info = it.fileInfo();
+
         QString relativePath = QDir(dataFolder).relativeFilePath(info.absoluteFilePath());
         QStringList parts = relativePath.split("/", Qt::SkipEmptyParts);
-        QStandardItem* current = treeModel->invisibleRootItem();
-        for (const auto& part : parts) {
+
+        QStandardItem* current = nullptr;
+        for (const auto & part : parts) {
+            QStandardItem* parentItem = current ? current : treeModel->invisibleRootItem();
             bool found = false;
-            for (int row = 0; row < current->rowCount(); ++row) {
-                QStandardItem* child = current->child(row);
+
+            for (int row = 0; row < parentItem->rowCount(); ++row) {
+                QStandardItem* child = parentItem->child(row);
                 if (child->text() == part) {
                     current = child;
                     found = true;
                     break;
                 }
             }
+
             if (!found) {
                 QStandardItem* newItem = new QStandardItem(part);
-                newItem->setData(path, Qt::UserRole + 1);
-                current->appendRow(newItem);
+                newItem->setData(path, ItemDataPath);
+                parentItem->appendRow(newItem);
                 current = newItem;
                 updateTreeViewItemIcon(treeModel->indexFromItem(newItem));
             }

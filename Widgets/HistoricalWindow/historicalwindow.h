@@ -26,9 +26,7 @@ class historicalWindowTable;
 class QTableWidgetItem;
 
 enum eMessageBoxType : int;
-enum historicalWindowItemsData {
-    ItemDataPath = Qt::UserRole + 1
-};
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class historicalWindow; }
@@ -67,10 +65,6 @@ private:
     const int RESIZE_MARGIN = 5;
     QPointF dragStartPos;
     Qt::Edges resizeEdges;
-
-public:
-    // Public methods
-    void loadTreeViewItems() const;
 
 protected:
     // Event handlers

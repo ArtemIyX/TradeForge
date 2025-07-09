@@ -49,6 +49,7 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION WIN32
         Widgets/Terminal/messageHandler.h
         Widgets/CustomMessageBoxes/messageBoxFactory.cpp
         Widgets/CustomMessageBoxes/messageBoxFactory.h
+        Widgets/HistoricalWindow/Data/e_HistoricalWindowItemData.h
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -10,10 +10,11 @@
 #include <qtextedit.h>
 
 inline QTextEdit *globalTextEdit = nullptr;
-inline QString logPath = QDir::currentPath() + "/Logs/TradeForgeLog.log";
+inline QString logPath = QDir::currentPath() + "/logs/TradeForgeLog.log";
 
 inline void createLog() {
 
+    QDir().mkdir(QDir::currentPath() + "/logs");
     QFile file(logPath);
     file.open(QIODevice::WriteOnly | QIODevice::Truncate);
     file.close();
