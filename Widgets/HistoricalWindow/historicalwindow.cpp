@@ -35,7 +35,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
 
     historicalDataManager = dataManager::instance();
 
-    connect(ui->createSymbolButton, SIGNAL(clicked()), this, SLOT(createSymbol()));
+    connect(ui->createSymbolButton, Q_SIGNAL(QPushButton::clicked), this, &historicalWindow::createSymbol);
     connect(ui->importFilesButton, Q_SIGNAL(QPushButton::clicked), this, &historicalWindow::importFilesClicked);
 
     connect(ui->searchSymbolLineEdit, &QLineEdit::textEdited, this, &historicalWindow::searchLineEditTextChanged);
@@ -147,6 +147,7 @@ historicalWindow::historicalWindow(QWidget *parent) :
     connect(folderItemsTable, Q_SIGNAL(&QTableWidget::itemChanged), this, &historicalWindow::symbolNameAccepted);
 
     ui->symbolDataTableWidget->resizeColumnsToContents();
+    ui->symbolDataTableWidget->setItemDelegate(new tableSymbolsStyledDelegate());
     ui->symbolDataTableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->symbolDataTableWidget->setHorizontalHeaderLabels({"Date","Open","High","Low","Close","Volume" });
 
@@ -213,9 +214,7 @@ historicalWindow::~historicalWindow() {
 
 void historicalWindow::setupFolderItemsTable() {
 
-    folderItemsTable->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(folderItemsTable->horizontalHeader(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
-        this, &historicalWindow::folderItemsHeaderContextMenu);
+
 }
 
 void historicalWindow::mousePressEvent(QMouseEvent *event) {
@@ -520,6 +519,8 @@ void historicalWindow::treeViewDirRenamed(const QModelIndex &index) {
     const QString dirBaseName = model->itemFromIndex(index)->text();
     const QString newDirName = model->itemFromIndex(index)->data(ItemDataPath).toString().remove(QDir(oldDirPath).dirName()) + dirBaseName;
 
+    model->itemFromIndex(index)->setData(newDirName, ItemDataPath);
+
     QDir(oldDirPath).rename(
         oldDirPath,
         newDirName);
@@ -556,45 +557,26 @@ void historicalWindow::treeViewItemClicked(const QModelIndex &index) {
         folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
     }
 }
-
-void historicalWindow::folderItemsHeaderContextMenu(const QPoint &pos) {
-
-    if (currentFolder.isEmpty()) return;
-
-    QMenu contextMenu(this);
-    contextMenu.setStyleSheet("color: rgb(255, 255, 255);");
-
-    const QAction *createSymbolAction = contextMenu.addAction("Create symbol");
-    const QAction *selectedAction = contextMenu.exec(folderItemsTable->mapToGlobal(pos));
-
-    if (selectedAction == createSymbolAction) {
-
-        createSymbol();
-    }
-}
-
 void historicalWindow::createSymbol() const {
 
     if (currentFolder.isEmpty()) { return;}
 
-    QDirIterator it(currentFolder, QDir::Files);
-
     int i = -1;
     QString itemAdditionalName = "";
 
-    while (it.hasNext()) {
-        it.next();
-        it.fileName();
+    QFileInfo fileInfo(currentFolder + "/New Symbol.hd");
+    int counter = 0;
+    QString newFilePath;
 
-        if (it.fileName().split('.').last() != "hd") { continue; }
-
-        if (it.fileName() == "New Symbol" + itemAdditionalName + ".hd") {
-            i++;
-            itemAdditionalName = " " + QString::number(i);
-        }
+    if (fileInfo.exists()) {
+        do {
+            counter++;
+            newFilePath = QString("%1/%2 %3.%4").arg(currentFolder, "New Symbol", QString::number(counter), ".hd");
+            fileInfo.setFile(newFilePath);
+        } while (fileInfo.exists());
     }
 
-    QTableWidgetItem *item = new QTableWidgetItem("New Symbol" + itemAdditionalName);
+    QTableWidgetItem *item = new QTableWidgetItem("New Symbol " + QString::number(counter));
 
     const int rowCount = folderItemsTable->rowCount();
     folderItemsTable->setRowCount(rowCount + 1);
@@ -602,7 +584,7 @@ void historicalWindow::createSymbol() const {
     folderItemsTable->setItem(rowCount, 1, new QTableWidgetItem(""));
     folderItemsTable->editItem(item);
 
-    historicalDataManager->createSymbol(currentFolder, item->text());
+    historicalDataManager->createSymbol(currentFolder, "New Symbol " + QString::number(counter));
 }
 
 void historicalWindow::folderItemSelected(const int currentRow, int currentColumn, int previousRow, int previousColumn) {
@@ -867,7 +849,7 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
     QDateTime date;
     double numberDouble;
     qlonglong numberLongLong;
-    bool numberValid;
+    bool numberValid = false;
 
     switch (currentColumn) {
         case 0:
@@ -959,6 +941,8 @@ void historicalWindow::currentTableDataChanged(const QTableWidgetItem *item) {
 
     auto currentTableLocal = historicalDataManager->getSymbolData()->getData();
     currentTableLocal[currentRow] = stroke;
+
+    historicalDataManager->getSymbolData()->updateIndex(stroke, currentRow);
 
     for (historicalCSVStroke writeStroke : currentTableLocal) {
 

@@ -46,5 +46,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     createLogBackup();
+
+    if (historicalMenuWidget) historicalMenuWidget->deleteLater();
+    if (terminalWidget) terminalWidget->deleteLater();
+
     event->accept();
 }

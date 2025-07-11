@@ -91,7 +91,6 @@ public slots:
 
     void currentTableDataChanged(const QTableWidgetItem *item);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);
-    void folderItemsHeaderContextMenu(const QPoint &pos);
     void settingValueChanged(int row, int column) const;
     void showFolderItemsContextMenu(const QPoint &pos);
 

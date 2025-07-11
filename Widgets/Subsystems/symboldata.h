@@ -23,6 +23,8 @@ public:
 
     void startLoading();
 
+    void updateIndex(historicalCSVStroke stroke, int index);
+
 signals:
     void strokeLoaded(historicalCSVStroke stroke);
 

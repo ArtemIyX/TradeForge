@@ -48,7 +48,7 @@ public:
     QStandardItemModel* getTreeModel() const;
     QList<symbolSettings> getSymbolSettings(const QString& symbolPath) const;
     QList<historicalCSVStroke> getHistoricalData(const QString& symbolPath) const;
-    const symbolData* getSymbolData() {return symbol;}
+    symbolData* getSymbolData() {return symbol;}
 
     //Table population
     void populateFolderItemsTable(const QString& folderPath, QTableWidget* tableWidget) const;

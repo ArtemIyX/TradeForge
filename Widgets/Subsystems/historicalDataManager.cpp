@@ -122,6 +122,7 @@ bool dataManager::createSymbol(const QString& folderPath, const QString& symbolN
     QFile file(filePath);
     if (file.exists()) {
         qWarning() << "dataManager::createSymbol: File" + symbolName + " already exists";
+        messageBoxFactory::showWarning(nullptr, "", "File" + symbolName + " already exists");
         return false;
     }
 
@@ -144,6 +145,8 @@ bool dataManager::createSymbol(const QString& folderPath, const QString& symbolN
         file.close();
         emit symbolSettingsUpdated(filePath);
         return true;
+    }else {
+        messageBoxFactory::showError(nullptr, "", "Fail to open file: " + file.errorString());
     }
     return false;
 }

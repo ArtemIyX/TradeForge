@@ -54,3 +54,7 @@ void symbolData::startLoading() {
 
     historicalData.close();
 }
+
+void symbolData::updateIndex(historicalCSVStroke stroke, int index) {
+    data[index] = stroke;
+}
