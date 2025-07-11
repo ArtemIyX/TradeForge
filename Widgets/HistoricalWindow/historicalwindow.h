@@ -87,6 +87,7 @@ public slots:
     void treeViewHeaderSubDirCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
     void treeViewItemClicked(const QModelIndex &index);
     void treeViewSubDirectoryCreated(QWidget *editor, QAbstractItemDelegate::EndEditHint hint);
+    void treeViewDirRenamed(const QModelIndex &index);
 
     void currentTableDataChanged(const QTableWidgetItem *item);
     void folderItemSelected(int currentRow, int currentColumn, int previousRow, int previousColumn);

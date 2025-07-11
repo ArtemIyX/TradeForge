@@ -17,7 +17,7 @@ void customStyledItemDelegate::setEditorData(QWidget *editor, const QModelIndex 
 
 void customStyledItemDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const {
 
-    QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
+    const QLineEdit *lineEdit = qobject_cast<QLineEdit *>(editor);
     if (!lineEdit) {
         return;
     }
@@ -28,5 +28,10 @@ void customStyledItemDelegate::setModelData(QWidget *editor, QAbstractItemModel 
     }else {
 
         model->setData(index, lineEdit->text());
+        const_cast<customStyledItemDelegate*>(this)->callItemDataChanged(index);
     }
+}
+
+void customStyledItemDelegate::callItemDataChanged(const QModelIndex &index) {
+    emit itemDataChanged(index);
 }

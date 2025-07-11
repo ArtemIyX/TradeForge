@@ -135,8 +135,11 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Utils")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Utils/YahooDownloader.py" "${CMAKE_BINARY_DIR}/Utils/YahooDownloader.py" COPYONLY)
-
-set(RELEASE_DIR "${CMAKE_BINARY_DIR}/TradeForge ${PROJECT_VERSION}")
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(RELEASE_DIR "${CMAKE_BINARY_DIR}/TradeForge ${PROJECT_VERSION}")
+else ()
+    set(RELEASE_DIR "${CMAKE_BINARY_DIR}/TradeForge")
+endif ()
 set(RELEASE_BIN_DIR "${RELEASE_DIR}/bin")
 set(RELEASE_RESOURCES_DIR "${RELEASE_DIR}/resources")
 set(RELEASE_UTILS_DIR "${RELEASE_DIR}/utils")

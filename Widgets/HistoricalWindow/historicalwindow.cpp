@@ -92,7 +92,9 @@ historicalWindow::historicalWindow(QWidget *parent) :
     ui->tabWidget->setTabEnabled(2, false);
 
     ui->symbolsTreeView->setModel(model);
-    ui->symbolsTreeView->setItemDelegate(new customStyledItemDelegate);
+    customStyledItemDelegate* treeViewItemDelegate = new customStyledItemDelegate;
+    ui->symbolsTreeView->setItemDelegate(treeViewItemDelegate);
+    connect(treeViewItemDelegate, &customStyledItemDelegate::itemDataChanged, this, &historicalWindow::treeViewDirRenamed);
 
     ui->symbolsTreeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->symbolsTreeView->header(), Q_SIGNAL(&QHeaderView::customContextMenuRequested),
@@ -506,6 +508,21 @@ void historicalWindow::treeViewSubDirectoryCreated(QWidget *editor, QAbstractIte
 
         model->removeRow(0, model->indexFromItem(folderItem));
     }
+}
+
+void historicalWindow::treeViewDirRenamed(const QModelIndex &index) {
+
+    if (!model->itemFromIndex(index)) {
+        return;
+    }
+
+    const QString oldDirPath = model->itemFromIndex(index)->data(ItemDataPath).toString();
+    const QString dirBaseName = model->itemFromIndex(index)->text();
+    const QString newDirName = model->itemFromIndex(index)->data(ItemDataPath).toString().remove(QDir(oldDirPath).dirName()) + dirBaseName;
+
+    QDir(oldDirPath).rename(
+        oldDirPath,
+        newDirName);
 }
 
 void historicalWindow::treeViewItemClicked(const QModelIndex &index) {

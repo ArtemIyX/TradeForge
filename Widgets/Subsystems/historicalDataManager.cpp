@@ -229,14 +229,12 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
 
     emit historicalDataUpdated(symbolPath);
     emit importDone();
-
     //If import too fast progress window maybe valid for 1-2 frames
     //Debug delay to see progress window
     /*QTimer::singleShot(1500, []() {
             messageBoxFactory::hideProgressWindow();
             messageBoxFactory::showInfo(nullptr, "Import done", "Test");
     });*/
-
     if (created) {
 
         messageBoxFactory::hideProgressWindow();

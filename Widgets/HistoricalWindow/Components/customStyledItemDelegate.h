@@ -14,12 +14,15 @@ public:
     using QStyledItemDelegate::QStyledItemDelegate;
 
     void setEditorData(QWidget *editor, const QModelIndex &index) const override;
-
     void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
 
 signals:
 
-    void itemDataChanged();
+    void itemDataChanged(const QModelIndex &index);
+
+private:
+
+    void callItemDataChanged(const QModelIndex &index);
 };
 
 
