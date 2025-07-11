@@ -87,6 +87,15 @@ qt_add_executable(${PROJECT_NAME} MANUAL_FINALIZATION WIN32
         Widgets/CustomMessageBoxes/messageBoxFactory.cpp
         Widgets/CustomMessageBoxes/messageBoxFactory.h
         Widgets/HistoricalWindow/Data/e_HistoricalWindowItemData.h
+        Widgets/CustomMessageBoxes/Windows/InfoMessageBox/custominfomessagebox.cpp
+        Widgets/CustomMessageBoxes/Windows/InfoMessageBox/custominfomessagebox.h
+        Widgets/CustomMessageBoxes/Windows/InfoMessageBox/custominfomessagebox.ui
+        Widgets/CustomMessageBoxes/Windows/AcceptMessageBox/customacceptmessagebox.cpp
+        Widgets/CustomMessageBoxes/Windows/AcceptMessageBox/customacceptmessagebox.h
+        Widgets/CustomMessageBoxes/Windows/AcceptMessageBox/customacceptmessagebox.ui
+        Widgets/CustomMessageBoxes/Windows/ProgressMessageBox/customprogressmessagebox.cpp
+        Widgets/CustomMessageBoxes/Windows/ProgressMessageBox/customprogressmessagebox.h
+        Widgets/CustomMessageBoxes/Windows/ProgressMessageBox/customprogressmessagebox.ui
 )
 
 target_link_libraries(${PROJECT_NAME}

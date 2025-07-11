@@ -80,11 +80,18 @@ customTitleBar::customTitleBar(QWidget *parent) : QWidget(parent) {
 }
 
 customTitleBar::~customTitleBar() {
-
 }
 
-void customTitleBar::closeButtonClicked() const {
-    parentWindow->deleteLater();
+void customTitleBar::setCallEventOnClose(bool newCallEventOnClose) {
+    callEventOnClose = newCallEventOnClose;
+}
+
+void customTitleBar::closeButtonClicked() {
+    if (callEventOnClose) {
+        emit onClose();
+    }else {
+        parentWindow->deleteLater();
+    }
 }
 
 void customTitleBar::minimizeButtonClicked() const {

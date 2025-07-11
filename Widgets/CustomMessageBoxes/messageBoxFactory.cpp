@@ -7,53 +7,36 @@
 #include <qabstractbutton.h>
 #include <QMessageBox>
 
-QProgressDialog* messageBoxFactory::progressDialog = nullptr;
+#include "Windows/AcceptMessageBox/customacceptmessagebox.h"
+#include "Windows/InfoMessageBox/custominfomessagebox.h"
+#include "Windows/ProgressMessageBox/customprogressmessagebox.h"
+
+customProgressMessageBox* messageBoxFactory::progressDialog = nullptr;
 
 void messageBoxFactory::showInfo(QWidget *parent, const QString &title, const QString &message) {
-
     if (progressDialog) {
         return;
     }
-    QMessageBox msgBox(parent);
-    msgBox.setWindowTitle(title);
-    msgBox.setText(message);
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("Ok");
-    msgBox.setIcon(QMessageBox::Information);
+    customInfoMessageBox msgBox(message);
     msgBox.exec();
 }
 
 void messageBoxFactory::showWarning(QWidget *parent, const QString &title, const QString &message) {
-    QMessageBox msgBox(parent);
-    msgBox.setWindowTitle(title);
-    msgBox.setText(message);
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("Ok");
-    msgBox.setIcon(QMessageBox::Warning);
+    customInfoMessageBox msgBox(message);
     msgBox.exec();
 }
 
 void messageBoxFactory::showError(QWidget *parent, const QString &title, const QString &message) {
-    QMessageBox msgBox(parent);
-    msgBox.setWindowTitle(title);
-    msgBox.setText(message);
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.button(QMessageBox::Ok)->setText("Ok");
-    msgBox.setIcon(QMessageBox::Critical);
+    customInfoMessageBox msgBox(message);
     msgBox.exec();
 }
 
-QProgressDialog * messageBoxFactory::showProgressWindow(QWidget *parent, const QString &title, const QString &message) {
+customProgressMessageBox* messageBoxFactory::showProgressWindow(const QString &message) {
     if (progressDialog) {
         return nullptr;
     }
-    progressDialog = new QProgressDialog(message, QString(), 0, 1000000, parent);
-    progressDialog->setWindowTitle(title);
-    progressDialog->setWindowModality(Qt::WindowModal);
-    progressDialog->setCancelButton(nullptr);
-    progressDialog->setMinimumDuration(0);
-    progressDialog->setValue(0);
-    progressDialog->show();
+
+    progressDialog = new customProgressMessageBox(message);
     return progressDialog;
 }
 
@@ -67,17 +50,8 @@ void messageBoxFactory::hideProgressWindow() {
     progressDialog = nullptr;
 }
 
-bool messageBoxFactory::showAcceptWindow(QWidget *parent, const QString &fileName, const QString &text) {
+bool messageBoxFactory::showAcceptWindow(QWidget *parent, const QString &text) {
 
-    QMessageBox msgBox(parent);
-    msgBox.setWindowTitle("Confirmation of action");
-    msgBox.setText(text);
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
-    msgBox.setIcon(QMessageBox::Question);
-
-    msgBox.button(QMessageBox::Yes)->setText("Yes");
-    msgBox.button(QMessageBox::No)->setText("No");
-
-    return msgBox.exec() == QMessageBox::Yes;
+    customAcceptMessageBox msgBox(text);
+    return msgBox.exec() == QDialog::Accepted;
 }

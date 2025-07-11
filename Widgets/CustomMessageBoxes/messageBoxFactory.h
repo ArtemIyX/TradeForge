@@ -7,6 +7,8 @@
 #include <qprogressdialog.h>
 #include <QWidget>
 
+class customProgressMessageBox;
+
 class messageBoxFactory {
 
 public:
@@ -17,12 +19,12 @@ public:
 
     static void showError(QWidget* parent, const QString& title, const QString& message);
 
-    static bool showAcceptWindow(QWidget* parent, const QString& fileName, const QString& toolName);
+    static bool showAcceptWindow(QWidget *parent, const QString &text);
 
-    static QProgressDialog* showProgressWindow(QWidget* parent, const QString& title, const QString& text);
+    static customProgressMessageBox* showProgressWindow(const QString& text);
     static void hideProgressWindow();
 
-    static QProgressDialog* progressDialog;
+    static customProgressMessageBox* progressDialog;
 };
 
 #endif //MESSAGEBOXFACTORY_H

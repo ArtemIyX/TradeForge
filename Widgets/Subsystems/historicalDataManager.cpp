@@ -189,7 +189,7 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
         return false;
     }
 
-    bool created = messageBoxFactory::showProgressWindow(nullptr, "Importing CSV", "Importing please wait");
+    const bool created = messageBoxFactory::showProgressWindow("Importing please wait");
 
     QList<historicalCSVStroke> table;
     QTextStream in(&file);
@@ -230,13 +230,19 @@ bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePat
     emit historicalDataUpdated(symbolPath);
     emit importDone();
 
+    //If import too fast progress window maybe valid for 1-2 frames
+    //Debug delay to see progress window
+    /*QTimer::singleShot(1500, []() {
+            messageBoxFactory::hideProgressWindow();
+            messageBoxFactory::showInfo(nullptr, "Import done", "Test");
+    });*/
+
     if (created) {
 
         messageBoxFactory::hideProgressWindow();
-        messageBoxFactory::showInfo(nullptr, "Import done", file.fileName() + " succesfully imported to " +
-            " " + historicalData.fileName());
+        messageBoxFactory::showInfo(nullptr, "Import done", QFileInfo(file).baseName() + " succesfully imported to " +
+            " " + QFileInfo(historicalData).baseName());
     }
-
     return true;
 }
 
@@ -257,7 +263,7 @@ bool dataManager::exportCSV(const QString& symbolPath, const QString& exportDir)
         return false;
     }
 
-    messageBoxFactory::showProgressWindow(nullptr, "Exporting CSV", "Exporting please wait");
+    messageBoxFactory::showProgressWindow("Exporting please wait");
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
@@ -340,7 +346,7 @@ bool dataManager::downloadYahooFinanceData(const QString &symbol, const QDate &s
         return false;
     }
 
-    messageBoxFactory::showProgressWindow(nullptr, "Downloading CSV", "Downloading CSV please wait");
+    messageBoxFactory::showProgressWindow("Downloading CSV please wait");
 
     QProcess pythonCheck;
     pythonCheck.start("python", {"--version"});

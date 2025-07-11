@@ -469,7 +469,7 @@ void historicalWindow::showTreeViewContextMenu(const QPoint &pos) {
 
         const QString itemPath = model->itemFromIndex(index)->data(ItemDataPath).toString();
 
-        const bool bAccepted = messageBoxFactory::showAcceptWindow(nullptr, "Delete folder", "Are you sure you want to delete " +
+        const bool bAccepted = messageBoxFactory::showAcceptWindow(nullptr, "Are you sure you want to delete " +
            itemPath.split('/').last());
 
         if (!bAccepted) return;
@@ -667,6 +667,7 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
         const QString pathToData = item->data(ItemDataPath).toString();
         QFile::remove(pathToData);
+        QFile::remove(QFileInfo(pathToData).absolutePath() + QFileInfo(pathToData).baseName() + ".data");
 
         folderItemsTable->removeRow( folderItemsTable->currentRow());
         messageBoxFactory::showInfo(nullptr, "Delete succesful", QFile(pathToData).fileName() + " deleted");
@@ -674,16 +675,15 @@ void historicalWindow::showFolderItemsContextMenu(const QPoint &pos) {
 
         const QString fileName = QFileDialog::getOpenFileName(
             this,
-            "Выберите файл для импорта",
+            "Choose file for import",
             "",
-            "CSV таблица (*.csv*)"
+            "CSV table (*.csv*)"
         );
 
         if (fileName.isEmpty()) return;
 
         const bool accepted = messageBoxFactory::showAcceptWindow(this,
-        fileName.split('/').last(),
-        currentFolderItem.split('/').last());
+        "Are you sure you want to import " + QFileInfo(fileName).baseName() + " to " + QFileInfo(currentFolderItem).baseName());
 
         if (accepted) {
             historicalDataManager->importCSV(currentFolderItem, fileName);

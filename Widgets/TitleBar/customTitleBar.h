@@ -16,17 +16,20 @@ public:
     explicit customTitleBar(QWidget *parent = nullptr);
     ~customTitleBar() override;
 
+    void setCallEventOnClose(bool newCallEventOnClose);
+
+signals:
+    void onClose();
+
 public slots:
 
-    void closeButtonClicked() const;
+    void closeButtonClicked();
     void minimizeButtonClicked() const;
 
 protected:
 
     void mousePressEvent(QMouseEvent *event) override;
-
     void mouseMoveEvent(QMouseEvent *event) override;
-
     void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
@@ -34,6 +37,8 @@ private:
     QPoint dragPosition;
     bool bDragging = false;
     QWidget* parentWindow;
+
+    bool callEventOnClose = false;
 
     QWidget *background = nullptr;
     QHBoxLayout *backgroundLayout = nullptr;
