@@ -46,7 +46,7 @@ inline void customMessageHandler(const QtMsgType type, const QMessageLogContext 
         globalTextEdit->append(formattedMsg);
     }
 
-    QDir().mkdir(logPath);
+    QDir().mkpath(logPath);
 
     QFile logFile(logPath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {

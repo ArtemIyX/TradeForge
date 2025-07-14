@@ -29,7 +29,7 @@ void symbolData::startLoading() {
     QFile historicalData(filePath);
 
     if (!historicalData.open(QIODevice::ReadOnly)) {
-        qDebug() << "historicalWindow::folderItemSelected read failed: " << historicalData.errorString();
+        qDebug() << "symbolData::startLoading read failed: " << historicalData.errorString();
         return;
     }
 

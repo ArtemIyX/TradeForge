@@ -5,6 +5,9 @@
 #include "customStyledItemDelegate.h"
 
 #include <QLineEdit>
+#include <QStandardItemModel>
+
+#include "e_HistoricalWindowItemData.h"
 
 void customStyledItemDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const {
 
@@ -28,7 +31,10 @@ void customStyledItemDelegate::setModelData(QWidget *editor, QAbstractItemModel 
     }else {
 
         model->setData(index, lineEdit->text());
-        const_cast<customStyledItemDelegate*>(this)->callItemDataChanged(index);
+        if (qobject_cast<QStandardItemModel*>(model)->itemFromIndex(index)->data(ItemDataPath + 1).toBool()) {
+
+            const_cast<customStyledItemDelegate*>(this)->callItemDataChanged(index);
+        }
     }
 }
 

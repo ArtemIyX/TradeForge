@@ -34,7 +34,7 @@ public:
     bool deleteSymbol(const QString& symbolPath);
     bool renameSymbol(const QString& oldPath, const QString& newName);
 
-    bool importCSV(const QString& symbolPath, const QString& csvFilePath);
+    bool importCSV(QString symbolPath, const QString& csvFilePath);
     bool exportCSV(const QString& symbolPath, const QString& exportDir);
     bool deleteHistoricalData(const QString& symbolPath);
     void importFiles(const QList<QString>& files, const QString &importPath, const QList<symbolSettings>& filesSettings);

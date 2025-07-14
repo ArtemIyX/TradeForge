@@ -74,11 +74,11 @@ protected:
 
 public slots:
     // UI interaction slots
-    void createSymbol() const;
+    void createSymbol();
     void exportFile();
     void importFilesClicked(bool checked);
     void searchLineEditTextChanged(const QString &arg1) const;
-    void symbolNameAccepted(QTableWidgetItem *item) const;
+    void symbolNameAccepted(QTableWidgetItem *item);
     void tabBarClicked(int index);
 
     // Tree view slots

@@ -121,8 +121,8 @@ bool dataManager::createSymbol(const QString& folderPath, const QString& symbolN
     const QString filePath = folderPath + "/" + symbolName + ".hd";
     QFile file(filePath);
     if (file.exists()) {
-        qWarning() << "dataManager::createSymbol: File" + symbolName + " already exists";
-        messageBoxFactory::showWarning(nullptr, "", "File" + symbolName + " already exists");
+        qWarning() << "dataManager::createSymbol: File " + symbolName + " already exists";
+        messageBoxFactory::showWarning(nullptr, "", "File " + symbolName + " already exists");
         return false;
     }
 
@@ -176,9 +176,9 @@ bool dataManager::renameSymbol(const QString& oldPath, const QString& newName) {
     return false;
 }
 
-bool dataManager::importCSV(const QString& symbolPath, const QString& csvFilePath) {
+bool dataManager::importCSV(QString symbolPath, const QString& csvFilePath) {
     QFile file(csvFilePath);
-    QFile historicalData(symbolPath.section('.', 0, -2) + ".data");
+    QFile historicalData(symbolPath.remove(".hd")+ ".data");
 
     if (!historicalData.open(QIODevice::WriteOnly)) {
         messageBoxFactory::showError(nullptr, "Fail to import", "Fail to open symbol Error: " + historicalData.errorString());
@@ -457,7 +457,7 @@ QList<historicalCSVStroke> dataManager::getHistoricalData(const QString& symbolP
 
     while (!historicalData.atEnd()) {
         historicalCSVStroke stroke{};
-        qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
+        const qint64 bytesRead = historicalData.read(reinterpret_cast<char*>(&stroke), sizeof(historicalCSVStroke));
         if (bytesRead == sizeof(historicalCSVStroke) && stroke.isValid()) {
             table.append(stroke);
         }
@@ -504,7 +504,7 @@ void dataManager::populateSymbolDataTable(const QString& symbolPath, QTableWidge
 bool dataManager::loadCurrentSymbolData() {
 
     bool startLoading;
-    const QString filePath = currentSymbol.split('.').first() + ".data";
+    const QString filePath = currentSymbol.remove(".hd") + ".data";
 
     if (symbol) {
         if (symbol->getPath() != filePath) {
@@ -557,6 +557,7 @@ void dataManager::loadTreeViewItems() {
             if (!found) {
                 QStandardItem* newItem = new QStandardItem(part);
                 newItem->setData(path, ItemDataPath);
+                newItem->setData(true, ItemDataPath+1);
                 parentItem->appendRow(newItem);
                 current = newItem;
                 updateTreeViewItemIcon(treeModel->indexFromItem(newItem));
